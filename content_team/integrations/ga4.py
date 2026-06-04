@@ -11,9 +11,6 @@ def pull(property_id: str, credentials_path: str) -> dict:
             DateRange,
             Dimension,
             Metric,
-            FilterExpression,
-            Filter,
-            FilterExpressionList,
         )
         import google.oauth2.service_account as sa
 
@@ -27,7 +24,7 @@ def pull(property_id: str, credentials_path: str) -> dict:
         start_date = (date.today() - timedelta(days=7)).isoformat()
         date_range = DateRange(start_date=start_date, end_date=end_date)
 
-        # Sessions by page path
+        # Sessions by page path and channel
         page_report = client.run_report(
             RunReportRequest(
                 property=f"properties/{property_id}",
