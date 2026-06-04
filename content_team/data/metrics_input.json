@@ -1,0 +1,69 @@
+{
+  "_instructions": "Fill this in each week before running the pipeline. Pull numbers from Instagram Insights.",
+  "week": "2026-W23",
+  "account": {
+    "followers": 0,
+    "followers_gained_this_week": 0,
+    "profile_visits": 0,
+    "reach": 0
+  },
+  "top_posts": [
+    {
+      "type": "Reel",
+      "hook": "paste your hook here",
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "reach": 0,
+      "outcome": "describe what happened / any DMs or leads"
+    },
+    {
+      "type": "Reel",
+      "hook": "paste your hook here",
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "reach": 0,
+      "outcome": ""
+    },
+    {
+      "type": "Carousel",
+      "hook": "paste your hook here",
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "shares": 0,
+      "saves": 0,
+      "reach": 0,
+      "outcome": ""
+    }
+  ],
+  "bottom_posts": [
+    {
+      "type": "Reel",
+      "hook": "paste your hook here",
+      "views": 0,
+      "likes": 0,
+      "comments": 0,
+      "saves": 0,
+      "outcome": "why you think it flopped"
+    }
+  ],
+  "dm_leads_this_week": 0,
+  "story_replies": 0,
+  "link_in_bio_clicks": 0,
+  "competitors_observed": [
+    {
+      "handle": "@competitor1",
+      "viral_post_hook": "paste hook here",
+      "approx_views": 0,
+      "format": "Reel / Carousel / Story",
+      "notes": "what made it work"
+    }
+  ],
+  "manual_notes": "Anything else you noticed this week — comments, DMs, real feedback from customers."
+}
