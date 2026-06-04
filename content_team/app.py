@@ -2,7 +2,7 @@
 """
 Content Team — Local Web App
 Run: python app.py
-Then open: http://localhost:5000
+Then open: http://localhost:8080
 """
 
 import json
@@ -13,7 +13,7 @@ from pathlib import Path
 import queue
 import threading
 
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, send_file, jsonify
 
 BASE_DIR = Path(__file__).parent
 OUTPUT_DIR = BASE_DIR / "outputs"
@@ -34,30 +34,39 @@ DEFAULT_SETTINGS = {
     "instagram_handle": "@pastelerialamerced",
     "location": "Valencia, España",
     "website": "pastelerialamerced.es",
-    "niche": "Custom celebration cakes made to order for weddings, birthdays, baby showers, and special events. Fully personalized design. Pickup in Valencia.",
-    "target_audience": "Women aged 25-45 in Valencia planning a special celebration — weddings, birthdays, baby showers. They want a beautiful, unique cake that matches their vision.",
-    "brand_voice": "Warm, artisan, proud of the craft. Speaks like a local bakery owner who loves what they do. Not corporate — genuine and close.",
-    "main_cta": "DM us to request your custom cake or visit pastelerialamerced.es",
-    "competitors": "",
+    "niche": "Tartas personalizadas hechas a medida para bodas, cumpleaños, baby showers y eventos especiales. Diseño totalmente personalizado online. Recogida en Valencia.",
+    "target_audience": "Hombres y mujeres de 20 a 40 años en Valencia que tienen un evento próximo y buscan una tarta única y personalizada.",
+    "brand_voice": "Directo, cercano, artesanal. Habla como un dueño de pastelería local que ama lo que hace. Sin corporativismo.",
+    "main_cta": "Diseña la tuya ahora — visita el enlace en la descripción ■",
+    "ga4_property_id": "",
+    "google_credentials_path": "",
+    "search_console_site_url": "https://pastelerialamerced.es",
+    "squarespace_api_key": "",
 }
 
 DEFAULT_METRICS = {
     "week": "",
-    "account": {"followers": 0, "followers_gained_this_week": 0, "reach": 0, "profile_visits": 0},
+    "account": {
+        "followers": 0,
+        "followers_gained_this_week": 0,
+        "visitas_perfil_reel_promedio": 0,
+        "reach": 0,
+    },
     "top_posts": [{}, {}, {}],
-    "bottom_posts": [{}],
-    "dm_leads_this_week": 0,
-    "link_in_bio_clicks": 0,
+    "worst_post": {},
+    "ventas_configurador_semana": 0,
+    "leads_whatsapp_semana": 0,
+    "resenas_google_total": 0,
     "competitors_observed": [{}],
     "manual_notes": "",
 }
 
 AGENTS_META = [
-    {"id": "analyst",    "name": "Data Analyst",       "role": "Reads your metrics and finds what's working", "emoji": "📊"},
-    {"id": "strategist", "name": "Content Strategist",  "role": "Sets the weekly content plan",                 "emoji": "🧠"},
-    {"id": "ideator",    "name": "Ideator",             "role": "30+ ideas → 7 winners",                       "emoji": "💡"},
-    {"id": "scripter",   "name": "Scripter",            "role": "Writes filming-ready scripts",                 "emoji": "✍️"},
-    {"id": "publisher",  "name": "Publishing Manager",  "role": "Schedule + DM funnel audit",                   "emoji": "📅"},
+    {"id": "analyst",    "name": "Data Analyst",       "role": "Lee tus datos y encuentra qué funciona", "emoji": "📊"},
+    {"id": "strategist", "name": "Content Strategist",  "role": "Define el plan de contenido semanal",     "emoji": "🧠"},
+    {"id": "ideator",    "name": "Ideator",             "role": "30+ ideas → 7 ganadoras",                "emoji": "💡"},
+    {"id": "scripter",   "name": "Scripter",            "role": "Escribe los guiones listos para grabar",  "emoji": "✍️"},
+    {"id": "publisher",  "name": "Publishing Manager",  "role": "Agenda + checklist DM funnel",            "emoji": "📅"},
 ]
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
@@ -81,6 +90,16 @@ def save_metrics(m):
     p = DATA_DIR / "metrics_input.json"
     p.write_text(json.dumps(m, indent=2, ensure_ascii=False))
 
+def load_auto_metrics():
+    """Load the most recent auto_metrics file if available."""
+    files = sorted(DATA_DIR.glob("auto_metrics_*.json"), reverse=True)
+    if files:
+        try:
+            return json.loads(files[0].read_text())
+        except Exception:
+            pass
+    return None
+
 def get_last_run():
     prefixes = [
         ("1_analyst_brief", "📊 Analyst Brief"),
@@ -102,9 +121,9 @@ def get_outputs():
     labels = {
         "1_analyst_brief":    ("📊", "Data Analyst Brief"),
         "2_content_strategy": ("🧠", "Content Strategy"),
-        "3_ideas":            ("💡", "Ideas (30+ brainstorm → 7 winners)"),
-        "4_scripts":          ("✍️", "Filming Scripts"),
-        "5_publishing_plan":  ("📅", "Publishing Plan"),
+        "3_ideas":            ("💡", "Ideas (30+ brainstorm → 7 ganadoras)"),
+        "4_scripts":          ("✍️", "Guiones listos para grabar"),
+        "5_publishing_plan":  ("📅", "Plan de Publicación"),
     }
     outputs = []
     for prefix in order:
@@ -128,6 +147,42 @@ def greeting():
     if h < 18: return "afternoon"
     return "evening"
 
+def get_api_status(settings, auto_data=None):
+    """Return status dict for each API integration."""
+    statuses = {}
+
+    # GA4
+    if not settings.get("ga4_property_id") or not settings.get("google_credentials_path"):
+        statuses["ga4"] = "not_configured"
+    elif auto_data and "ga4" in auto_data and "error" in auto_data["ga4"]:
+        statuses["ga4"] = "error"
+    elif auto_data and "ga4" in auto_data:
+        statuses["ga4"] = "connected"
+    else:
+        statuses["ga4"] = "not_configured"
+
+    # Search Console
+    if not settings.get("google_credentials_path") or not settings.get("search_console_site_url"):
+        statuses["sc"] = "not_configured"
+    elif auto_data and "sc" in auto_data and "error" in auto_data["sc"]:
+        statuses["sc"] = "error"
+    elif auto_data and "sc" in auto_data:
+        statuses["sc"] = "connected"
+    else:
+        statuses["sc"] = "not_configured"
+
+    # Squarespace
+    if not settings.get("squarespace_api_key"):
+        statuses["sq"] = "not_configured"
+    elif auto_data and "sq" in auto_data and "error" in auto_data["sq"]:
+        statuses["sq"] = "error"
+    elif auto_data and "sq" in auto_data:
+        statuses["sq"] = "connected"
+    else:
+        statuses["sq"] = "not_configured"
+
+    return statuses
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -147,42 +202,49 @@ def setup():
             if k in request.form:
                 s[k] = request.form[k].strip()
         save_settings(s)
-        flash("Settings saved!", "success")
+        flash("Configuración guardada.", "success")
         return redirect(url_for("setup"))
     return render_template("setup.html", active="setup", settings=s)
 
 @app.route("/metrics", methods=["GET", "POST"])
 def metrics():
     m = load_metrics()
+    settings = load_settings()
+    auto_data = load_auto_metrics()
+    api_status = get_api_status(settings, auto_data)
+
     if request.method == "POST":
         f = request.form
         m["week"] = str(date.today())
         m["account"] = {
             "followers": int(f.get("followers") or 0),
             "followers_gained_this_week": int(f.get("followers_gained") or 0),
+            "visitas_perfil_reel_promedio": int(f.get("visitas_perfil_reel") or 0),
             "reach": int(f.get("reach") or 0),
-            "profile_visits": int(f.get("profile_visits") or 0),
         }
-        m["dm_leads_this_week"] = int(f.get("dm_leads") or 0)
-        m["link_in_bio_clicks"] = int(f.get("link_clicks") or 0)
+        m["ventas_configurador_semana"] = int(f.get("ventas_configurador") or 0)
+        m["leads_whatsapp_semana"] = int(f.get("leads_whatsapp") or 0)
+        m["resenas_google_total"] = int(f.get("resenas_google") or 0)
+
         m["top_posts"] = []
         for i in range(3):
             m["top_posts"].append({
                 "type": f.get(f"top_type_{i}", "Reel"),
                 "hook": f.get(f"top_hook_{i}", ""),
                 "views": int(f.get(f"top_views_{i}") or 0),
+                "visitas_perfil": int(f.get(f"top_visitas_perfil_{i}") or 0),
                 "likes": int(f.get(f"top_likes_{i}") or 0),
                 "comments": int(f.get(f"top_comments_{i}") or 0),
                 "shares": int(f.get(f"top_shares_{i}") or 0),
                 "saves": int(f.get(f"top_saves_{i}") or 0),
                 "outcome": f.get(f"top_outcome_{i}", ""),
             })
-        m["bottom_posts"] = [{
+        m["worst_post"] = {
             "type": f.get("bad_type", "Reel"),
             "hook": f.get("bad_hook", ""),
             "views": int(f.get("bad_views") or 0),
             "outcome": f.get("bad_outcome", ""),
-        }]
+        }
         m["competitors_observed"] = [{
             "handle": f.get("comp_handle", ""),
             "viral_post_hook": f.get("comp_hook", ""),
@@ -191,9 +253,45 @@ def metrics():
         }]
         m["manual_notes"] = f.get("manual_notes", "")
         save_metrics(m)
-        flash("Metrics saved!", "success")
+        flash("Métricas guardadas.", "success")
         return redirect(url_for("metrics"))
-    return render_template("metrics.html", active="metrics", m=m)
+
+    return render_template("metrics.html",
+        active="metrics",
+        m=m,
+        auto_data=auto_data,
+        api_status=api_status,
+    )
+
+@app.route("/api/pull-data", methods=["POST"])
+def api_pull_data():
+    """Pull data from all 3 integrations and save to data/auto_metrics_{date}.json"""
+    settings = load_settings()
+
+    from integrations import ga4, search_console, squarespace
+
+    ga4_data = ga4.pull(
+        settings.get("ga4_property_id", ""),
+        settings.get("google_credentials_path", ""),
+    )
+    sc_data = search_console.pull(
+        settings.get("search_console_site_url", ""),
+        settings.get("google_credentials_path", ""),
+    )
+    sq_data = squarespace.pull(settings.get("squarespace_api_key", ""))
+
+    result = {
+        "pulled_at": datetime.now().isoformat(),
+        "ga4": ga4_data,
+        "sc": sc_data,
+        "sq": sq_data,
+    }
+
+    today = date.today().isoformat()
+    out_path = DATA_DIR / f"auto_metrics_{today}.json"
+    out_path.write_text(json.dumps(result, indent=2, ensure_ascii=False))
+
+    return jsonify(result)
 
 @app.route("/run")
 def run_page():
@@ -209,141 +307,69 @@ def run_page():
 def api_run():
     only = request.args.get("only")
     settings = load_settings()
-    metrics = load_metrics()
+    instagram_metrics = load_metrics()
 
-    def stream():
-        def emit(data):
-            yield f"data: {json.dumps(data)}\n\n"
-
-        try:
-            import anthropic as _anthropic
-            from agents import data_analyst, content_strategist, ideator, scripter, publishing_manager
-
-            # Inject settings into agent configs at runtime
-            os.environ["ANTHROPIC_API_KEY"] = settings["api_key"]
-            import config as cfg
-            cfg.MODEL = "claude-haiku-4-5-20251001"
-            cfg.NICHE = settings["niche"]
-            cfg.BRAND_VOICE = settings["brand_voice"]
-            cfg.TARGET_AUDIENCE = settings["target_audience"]
-            cfg.INSTAGRAM_HANDLE = settings["instagram_handle"]
-
-            def run_agent(agent_id, fn, *args):
-                yield from emit({"type": "agent_start", "agent": agent_id, "message": f"Running {agent_id}..."})
-                result = fn(*args)
-                yield from emit({"type": "agent_done", "agent": agent_id, "message": f"{agent_id} finished"})
-                return result
-
-            agents_to_run = [only] if only else ["analyst", "strategist", "ideator", "scripter", "publisher"]
-
-            brief = strategy = ideas = scripts = None
-
-            def latest(prefix):
-                files = sorted(OUTPUT_DIR.glob(f"{prefix}_*.md"), reverse=True)
-                return files[0].read_text() if files else None
-
-            if "analyst" in agents_to_run:
-                gen = run_agent("analyst", data_analyst.run)
-                for ev in gen:
-                    if isinstance(ev, bytes) or isinstance(ev, str):
-                        yield ev
-                    else:
-                        brief = ev
-                # re-run properly
-                yield from emit({"type": "agent_start", "agent": "analyst", "message": "Data Analyst is reading your metrics..."})
-                brief = data_analyst.run()
-                yield from emit({"type": "agent_done", "agent": "analyst", "message": "Analyst brief ready"})
-            else:
-                brief = latest("1_analyst_brief")
-
-            if "strategist" in agents_to_run:
-                yield from emit({"type": "agent_start", "agent": "strategist", "message": "Content Strategist is building your plan..."})
-                strategy = content_strategist.run(brief)
-                yield from emit({"type": "agent_done", "agent": "strategist", "message": "Strategy ready"})
-            else:
-                strategy = latest("2_content_strategy")
-
-            if "ideator" in agents_to_run:
-                yield from emit({"type": "agent_start", "agent": "ideator", "message": "Ideator is brainstorming 30+ ideas..."})
-                ideas = ideator.run(strategy)
-                yield from emit({"type": "agent_done", "agent": "ideator", "message": "7 winning ideas locked"})
-            else:
-                ideas = latest("3_ideas")
-
-            if "scripter" in agents_to_run:
-                yield from emit({"type": "agent_start", "agent": "scripter", "message": "Scripter is writing your 7 scripts..."})
-                scripts = scripter.run(ideas)
-                yield from emit({"type": "agent_done", "agent": "scripter", "message": "Scripts ready"})
-            else:
-                scripts = latest("4_scripts")
-
-            if "publisher" in agents_to_run:
-                yield from emit({"type": "agent_start", "agent": "publisher", "message": "Publishing Manager is building your schedule..."})
-                publishing_manager.run(scripts, strategy or latest("2_content_strategy"))
-                yield from emit({"type": "agent_done", "agent": "publisher", "message": "Publishing plan ready"})
-
-            yield from emit({"type": "done"})
-
-        except Exception as e:
-            yield from emit({"type": "error", "message": str(e)})
-
-    # Fix: stream() is a generator, run it properly
     def generate():
-        brief = strategy = ideas = scripts = None
-
         def emit(data):
             return f"data: {json.dumps(data)}\n\n"
 
         try:
-            import anthropic as _anthropic
             from agents import data_analyst, content_strategist, ideator, scripter, publishing_manager
             import config as cfg
 
             os.environ["ANTHROPIC_API_KEY"] = settings["api_key"]
             cfg.ANTHROPIC_API_KEY = settings["api_key"]
-            cfg.NICHE = settings["niche"]
-            cfg.BRAND_VOICE = settings["brand_voice"]
-            cfg.TARGET_AUDIENCE = settings["target_audience"]
-            cfg.INSTAGRAM_HANDLE = settings["instagram_handle"]
+            cfg.NICHE = settings.get("niche", cfg.NICHE)
+            cfg.BRAND_VOICE = settings.get("brand_voice", cfg.BRAND_VOICE)
+            cfg.TARGET_AUDIENCE = settings.get("target_audience", cfg.TARGET_AUDIENCE)
+            cfg.INSTAGRAM_HANDLE = settings.get("instagram_handle", cfg.INSTAGRAM_HANDLE)
 
             agents_to_run = [only] if only else ["analyst", "strategist", "ideator", "scripter", "publisher"]
 
             def latest(prefix):
                 files = sorted(OUTPUT_DIR.glob(f"{prefix}_*.md"), reverse=True)
-                return files[0].read_text() if files else None
+                return files[0].read_text() if files else ""
+
+            brief = strategy = ideas = scripts = None
 
             if "analyst" in agents_to_run:
-                yield emit({"type": "agent_start", "agent": "analyst", "message": "Data Analyst is reading your metrics..."})
-                brief = data_analyst.run()
-                yield emit({"type": "agent_done", "agent": "analyst", "message": "Analyst brief ready"})
+                yield emit({"type": "agent_start", "agent": "analyst", "message": "El Analista está leyendo tus datos..."})
+                # Load auto metrics if available
+                auto_data = load_auto_metrics()
+                ga4_data = auto_data.get("ga4", {"error": "not configured"}) if auto_data else {"error": "not configured"}
+                sc_data = auto_data.get("sc", {"error": "not configured"}) if auto_data else {"error": "not configured"}
+                sq_data = auto_data.get("sq", {"error": "not configured"}) if auto_data else {"error": "not configured"}
+
+                brief = data_analyst.run(instagram_metrics, ga4_data, sc_data, sq_data)
+                yield emit({"type": "agent_done", "agent": "analyst", "message": "Brief del analista listo"})
             else:
                 brief = latest("1_analyst_brief")
 
             if "strategist" in agents_to_run:
-                yield emit({"type": "agent_start", "agent": "strategist", "message": "Content Strategist is building your weekly plan..."})
+                yield emit({"type": "agent_start", "agent": "strategist", "message": "El Estratega está construyendo el plan semanal..."})
                 strategy = content_strategist.run(brief)
-                yield emit({"type": "agent_done", "agent": "strategist", "message": "Strategy ready"})
+                yield emit({"type": "agent_done", "agent": "strategist", "message": "Estrategia lista"})
             else:
                 strategy = latest("2_content_strategy")
 
             if "ideator" in agents_to_run:
-                yield emit({"type": "agent_start", "agent": "ideator", "message": "Ideator is brainstorming 30+ ideas..."})
+                yield emit({"type": "agent_start", "agent": "ideator", "message": "El Ideador está generando 30+ ideas..."})
                 ideas = ideator.run(strategy)
-                yield emit({"type": "agent_done", "agent": "ideator", "message": "7 winning ideas locked"})
+                yield emit({"type": "agent_done", "agent": "ideator", "message": "7 ideas ganadoras seleccionadas"})
             else:
                 ideas = latest("3_ideas")
 
             if "scripter" in agents_to_run:
-                yield emit({"type": "agent_start", "agent": "scripter", "message": "Scripter is writing your 7 filming-ready scripts..."})
+                yield emit({"type": "agent_start", "agent": "scripter", "message": "El Guionista está escribiendo los 7 guiones..."})
                 scripts = scripter.run(ideas)
-                yield emit({"type": "agent_done", "agent": "scripter", "message": "Scripts ready"})
+                yield emit({"type": "agent_done", "agent": "scripter", "message": "Guiones listos"})
             else:
                 scripts = latest("4_scripts")
 
             if "publisher" in agents_to_run:
-                yield emit({"type": "agent_start", "agent": "publisher", "message": "Publishing Manager is building your schedule..."})
+                yield emit({"type": "agent_start", "agent": "publisher", "message": "El Director de Publicación está armando la agenda..."})
                 publishing_manager.run(scripts, strategy or latest("2_content_strategy"))
-                yield emit({"type": "agent_done", "agent": "publisher", "message": "Publishing plan ready"})
+                yield emit({"type": "agent_done", "agent": "publisher", "message": "Plan de publicación listo"})
 
             yield emit({"type": "done"})
 
@@ -368,9 +394,9 @@ def download(filename):
 
 
 if __name__ == "__main__":
-    print("\n" + "="*50)
-    print("  🎂 La Merced Content Team")
-    print("  Open this in your browser:")
+    print("\n" + "=" * 50)
+    print("  La Merced Content Team")
+    print("  Abre esto en tu navegador:")
     print("  → http://localhost:8080")
-    print("="*50 + "\n")
+    print("=" * 50 + "\n")
     app.run(debug=False, port=8080)

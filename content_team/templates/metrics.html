@@ -1,53 +1,130 @@
 {% extends "base.html" %}
-{% block title %}Weekly Metrics{% endblock %}
+{% block title %}Métricas Semanales{% endblock %}
 {% block content %}
-<h1>Weekly Metrics</h1>
-<p class="subtitle">Fill this in every Monday from your Instagram Insights. Takes about 5 minutes.</p>
+<h1>Métricas Semanales</h1>
+<p class="subtitle">Datos automáticos arriba · Instagram manual abajo. Cada lunes.</p>
 
-<div class="alert alert-warning" style="font-size:13px">
-  📱 <strong>Where to find these numbers:</strong> Open Instagram → your profile → tap the bar chart icon (Professional Dashboard) → then "Content you shared" for post stats.
+<!-- AUTO DATA SECTION -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h2 style="margin-bottom:4px">Datos automáticos</h2>
+      <span style="font-size:12px;color:var(--muted)">Datos de los últimos 7 días</span>
+    </div>
+    <button class="btn btn-outline btn-sm" id="pull-btn" onclick="pullData()">
+      <span id="pull-icon">🔄</span> Actualizar datos
+    </button>
+  </div>
+
+  <!-- API Status badges -->
+  <div class="flex" style="margin-bottom:20px;flex-wrap:wrap;gap:10px">
+    {% set ga4_status = api_status.get('ga4', 'not_configured') %}
+    {% set sc_status = api_status.get('sc', 'not_configured') %}
+    {% set sq_status = api_status.get('sq', 'not_configured') %}
+
+    <span class="badge {% if ga4_status == 'connected' %}badge-green{% elif ga4_status == 'error' %}badge-red{% else %}badge-gray{% endif %}">
+      GA4: {% if ga4_status == 'connected' %}✓ Conectado{% elif ga4_status == 'error' %}✗ Error{% else %}No configurado{% endif %}
+    </span>
+    <span class="badge {% if sc_status == 'connected' %}badge-green{% elif sc_status == 'error' %}badge-red{% else %}badge-gray{% endif %}">
+      Search Console: {% if sc_status == 'connected' %}✓ Conectado{% elif sc_status == 'error' %}✗ Error{% else %}No configurado{% endif %}
+    </span>
+    <span class="badge {% if sq_status == 'connected' %}badge-green{% elif sq_status == 'error' %}badge-red{% else %}badge-gray{% endif %}">
+      Squarespace: {% if sq_status == 'connected' %}✓ Conectado{% elif sq_status == 'error' %}✗ Error{% else %}No configurado{% endif %}
+    </span>
+  </div>
+
+  <!-- Auto data numbers -->
+  <div id="auto-data-section">
+    {% if auto_data %}
+    <div class="grid-3" style="margin-bottom:16px">
+      <!-- Squarespace: ventas -->
+      <div class="stat">
+        <div class="stat-label">Ventas configurador</div>
+        {% if auto_data.sq and not auto_data.sq.get('error') %}
+          <div class="stat-value">{{ auto_data.sq.orders_count }}</div>
+          <div class="stat-sub">€{{ auto_data.sq.total_revenue_eur }} · avg €{{ auto_data.sq.avg_order_value_eur }}</div>
+        {% else %}
+          <div class="stat-value" style="font-size:16px;color:var(--muted)">—</div>
+          <div class="stat-sub">Squarespace no configurado</div>
+        {% endif %}
+      </div>
+
+      <!-- GA4: conv rate -->
+      <div class="stat">
+        <div class="stat-label">Conv. rate configurador</div>
+        {% if auto_data.ga4 and not auto_data.ga4.get('error') %}
+          <div class="stat-value">{{ auto_data.ga4.conversion_rate_pct }}%</div>
+          <div class="stat-sub">{{ auto_data.ga4.configurator_visits }} visitas · {{ auto_data.ga4.configurator_conversions }} conversiones</div>
+        {% else %}
+          <div class="stat-value" style="font-size:16px;color:var(--muted)">—</div>
+          <div class="stat-sub">GA4 no configurado</div>
+        {% endif %}
+      </div>
+
+      <!-- Search Console: clicks -->
+      <div class="stat">
+        <div class="stat-label">Clicks orgánicos</div>
+        {% if auto_data.sc and not auto_data.sc.get('error') %}
+          <div class="stat-value">{{ auto_data.sc.total_clicks }}</div>
+          <div class="stat-sub">{{ auto_data.sc.total_impressions }} impresiones · pos. {{ auto_data.sc.avg_position }}</div>
+        {% else %}
+          <div class="stat-value" style="font-size:16px;color:var(--muted)">—</div>
+          <div class="stat-sub">Search Console no configurado</div>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if auto_data.get('pulled_at') %}
+    <p style="font-size:12px;color:var(--muted)">Última actualización: {{ auto_data.pulled_at[:16].replace('T', ' ') }}</p>
+    {% endif %}
+
+    {% else %}
+    <div style="padding:24px;text-align:center;color:var(--muted)">
+      <p>No hay datos automáticos todavía.</p>
+      <p style="font-size:13px;margin-top:8px">Configura las integraciones en Ajustes y pulsa "Actualizar datos".</p>
+    </div>
+    {% endif %}
+  </div>
 </div>
 
+<!-- INSTAGRAM MANUAL SECTION -->
 <form method="POST" action="/metrics">
-  <!-- Account -->
+
   <div class="card">
-    <div class="form-section-title">📈 Account Overview</div>
+    <div class="form-section-title">📱 Instagram — Cuenta (manual)</div>
+    <div class="alert alert-warning" style="font-size:13px;margin-bottom:20px">
+      Abre Instagram → tu perfil → icono de gráfica (Panel profesional) → "Contenido que compartiste" para las estadísticas.
+    </div>
+
     <div class="form-row">
       <div class="form-group">
-        <label>Total Followers</label>
+        <label>Seguidores totales</label>
         <input type="number" name="followers" value="{{ m.account.followers or '' }}" placeholder="0">
       </div>
       <div class="form-group">
-        <label>New Followers This Week</label>
+        <label>Nuevos seguidores esta semana</label>
         <input type="number" name="followers_gained" value="{{ m.account.followers_gained_this_week or '' }}" placeholder="0">
       </div>
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>Total Reach This Week</label>
+        <label>Visitas de perfil / reel (promedio) ← LA métrica clave</label>
+        <input type="number" name="visitas_perfil_reel" value="{{ m.account.visitas_perfil_reel_promedio or '' }}" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Alcance total esta semana</label>
         <input type="number" name="reach" value="{{ m.account.reach or '' }}" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>Profile Visits</label>
-        <input type="number" name="profile_visits" value="{{ m.account.profile_visits or '' }}" placeholder="0">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>DM Leads / Inquiries This Week</label>
-        <input type="number" name="dm_leads" value="{{ m.dm_leads_this_week or '' }}" placeholder="0">
-      </div>
-      <div class="form-group">
-        <label>Link in Bio Clicks</label>
-        <input type="number" name="link_clicks" value="{{ m.link_in_bio_clicks or '' }}" placeholder="0">
       </div>
     </div>
   </div>
 
   <!-- Top posts -->
   <div class="card">
-    <div class="form-section-title">🏆 Top 3 Posts This Week (best performers)</div>
-    <p class="text-muted" style="font-size:13px;margin-bottom:20px">Find these in Instagram Insights → "Most reached" or "Most liked"</p>
+    <div class="form-section-title">🏆 Top 3 Posts Esta Semana</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">
+      Los que más rindieron. Busca en Instagram Insights → "Más alcance" o "Más me gusta".
+      <strong>Visitas de perfil</strong> es la métrica más importante (indica intención de compra).
+    </p>
 
     {% for i in range(3) %}
     {% set p = m.top_posts[i] if m.top_posts|length > i else {} %}
@@ -55,22 +132,32 @@
       <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:12px">POST #{{ i+1 }}</div>
       <div class="form-row">
         <div class="form-group">
-          <label>Format</label>
+          <label>Tipo</label>
           <select name="top_type_{{ i }}">
-            <option value="Reel" {{ 'selected' if p.get('type')=='Reel' }}>Reel</option>
-            <option value="Carousel" {{ 'selected' if p.get('type')=='Carousel' }}>Carousel</option>
-            <option value="Photo" {{ 'selected' if p.get('type')=='Photo' }}>Photo</option>
-            <option value="Story" {{ 'selected' if p.get('type')=='Story' }}>Story</option>
+            <option value="Skit" {{ 'selected' if p.get('type')=='Skit' }}>Skit</option>
+            <option value="Prueba" {{ 'selected' if p.get('type')=='Prueba' }}>Prueba</option>
+            <option value="Mecanismo" {{ 'selected' if p.get('type')=='Mecanismo' }}>Mecanismo</option>
+            <option value="Reel" {{ 'selected' if p.get('type')=='Reel' }}>Reel (otro)</option>
           </select>
         </div>
         <div class="form-group">
-          <label>Views / Reach</label>
+          <label>Reproducciones / Alcance</label>
           <input type="number" name="top_views_{{ i }}" value="{{ p.get('views', '') }}" placeholder="0">
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Visitas de perfil generadas ← clave</label>
+          <input type="number" name="top_visitas_perfil_{{ i }}" value="{{ p.get('visitas_perfil', '') }}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Shares (compartidos)</label>
+          <input type="number" name="top_shares_{{ i }}" value="{{ p.get('shares', '') }}" placeholder="0">
+        </div>
+      </div>
       <div class="form-group">
-        <label>Hook (first line of caption or first words spoken in the video)</label>
-        <input type="text" name="top_hook_{{ i }}" value="{{ p.get('hook', '') }}" placeholder="e.g. This is the cake we made for a wedding last Saturday...">
+        <label>Hook (primeras palabras del vídeo o primera línea del caption)</label>
+        <input type="text" name="top_hook_{{ i }}" value="{{ p.get('hook', '') }}" placeholder="ej: La tarta que nadie creyó que podíamos hacer...">
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -78,90 +165,131 @@
           <input type="number" name="top_likes_{{ i }}" value="{{ p.get('likes', '') }}" placeholder="0">
         </div>
         <div class="form-group">
-          <label>Comments</label>
+          <label>Comentarios</label>
           <input type="number" name="top_comments_{{ i }}" value="{{ p.get('comments', '') }}" placeholder="0">
         </div>
         <div class="form-group">
-          <label>Shares</label>
-          <input type="number" name="top_shares_{{ i }}" value="{{ p.get('shares', '') }}" placeholder="0">
-        </div>
-        <div class="form-group">
-          <label>Saves</label>
+          <label>Guardados</label>
           <input type="number" name="top_saves_{{ i }}" value="{{ p.get('saves', '') }}" placeholder="0">
         </div>
       </div>
       <div class="form-group">
-        <label>What happened? (DMs, comments, any real reaction)</label>
-        <input type="text" name="top_outcome_{{ i }}" value="{{ p.get('outcome', '') }}" placeholder="Got 3 DMs asking for prices, several saved it">
+        <label>¿Qué pasó? (DMs, comentarios, reacciones reales)</label>
+        <input type="text" name="top_outcome_{{ i }}" value="{{ p.get('outcome', '') }}" placeholder="3 DMs preguntando precios, muchos guardados">
       </div>
     </div>
     {% endfor %}
   </div>
 
-  <!-- Bottom posts -->
+  <!-- Worst post -->
   <div class="card">
-    <div class="form-section-title">💀 Worst Post This Week</div>
-    <p class="text-muted" style="font-size:13px;margin-bottom:20px">The one that flopped. Helps the analyst know what to avoid.</p>
-    {% set b = m.bottom_posts[0] if m.bottom_posts else {} %}
+    <div class="form-section-title">Peor post esta semana</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">El que menos rindió. Ayuda al analista a saber qué evitar.</p>
+    {% set b = m.worst_post if m.worst_post else {} %}
     <div class="form-row">
       <div class="form-group">
-        <label>Format</label>
+        <label>Tipo</label>
         <select name="bad_type">
-          <option value="Reel" {{ 'selected' if b.get('type')=='Reel' }}>Reel</option>
-          <option value="Carousel" {{ 'selected' if b.get('type')=='Carousel' }}>Carousel</option>
-          <option value="Photo" {{ 'selected' if b.get('type')=='Photo' }}>Photo</option>
-          <option value="Story" {{ 'selected' if b.get('type')=='Story' }}>Story</option>
+          <option value="Skit" {{ 'selected' if b.get('type')=='Skit' }}>Skit</option>
+          <option value="Prueba" {{ 'selected' if b.get('type')=='Prueba' }}>Prueba</option>
+          <option value="Mecanismo" {{ 'selected' if b.get('type')=='Mecanismo' }}>Mecanismo</option>
+          <option value="Reel" {{ 'selected' if b.get('type')=='Reel' }}>Reel (otro)</option>
         </select>
       </div>
       <div class="form-group">
-        <label>Views / Reach</label>
+        <label>Reproducciones / Alcance</label>
         <input type="number" name="bad_views" value="{{ b.get('views', '') }}" placeholder="0">
       </div>
     </div>
     <div class="form-group">
       <label>Hook</label>
-      <input type="text" name="bad_hook" value="{{ b.get('hook', '') }}" placeholder="What was the opening of this post?">
+      <input type="text" name="bad_hook" value="{{ b.get('hook', '') }}" placeholder="¿Cuál fue la apertura?">
     </div>
     <div class="form-group">
-      <label>Why do you think it flopped?</label>
-      <input type="text" name="bad_outcome" value="{{ b.get('outcome', '') }}" placeholder="Bad lighting, boring topic, posted at wrong time...">
+      <label>¿Por qué crees que falló?</label>
+      <input type="text" name="bad_outcome" value="{{ b.get('outcome', '') }}" placeholder="Hook débil, sin CTA mid-video, formato equivocado...">
     </div>
   </div>
 
-  <!-- Competitors -->
+  <!-- The 5 key metrics -->
   <div class="card">
-    <div class="form-section-title">🕵️ Competitor Intel (optional but valuable)</div>
-    <p class="text-muted" style="font-size:13px;margin-bottom:20px">Did you see a competitor post something that got lots of views or engagement this week?</p>
+    <div class="form-section-title">Las 5 métricas que importan</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ventas configurador esta semana (manual si Squarespace no conectado)</label>
+        <input type="number" name="ventas_configurador" value="{{ m.ventas_configurador_semana or '' }}" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Leads WhatsApp esta semana</label>
+        <input type="number" name="leads_whatsapp" value="{{ m.leads_whatsapp_semana or '' }}" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Reseñas Google (total acumulado)</label>
+      <input type="number" name="resenas_google" value="{{ m.resenas_google_total or '' }}" placeholder="0">
+    </div>
+  </div>
+
+  <!-- Competitor intel -->
+  <div class="card">
+    <div class="form-section-title">🕵️ Intel de competidores (opcional pero valioso)</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">¿Viste a un competidor publicar algo que funcionó esta semana?</p>
     {% set c = m.competitors_observed[0] if m.competitors_observed else {} %}
     <div class="form-row">
       <div class="form-group">
-        <label>Their Instagram handle</label>
+        <label>Su handle de Instagram</label>
         <input type="text" name="comp_handle" value="{{ c.get('handle', '') }}" placeholder="@competidorvalencia">
       </div>
       <div class="form-group">
-        <label>Approx views / likes</label>
+        <label>Reproducciones / likes aprox.</label>
         <input type="text" name="comp_views" value="{{ c.get('approx_views', '') }}" placeholder="5000 views">
       </div>
     </div>
     <div class="form-group">
-      <label>Their hook / what the post was about</label>
-      <input type="text" name="comp_hook" value="{{ c.get('viral_post_hook', '') }}" placeholder="Time-lapse of decorating a 5-tier wedding cake">
+      <label>Su hook / de qué iba el post</label>
+      <input type="text" name="comp_hook" value="{{ c.get('viral_post_hook', '') }}" placeholder="Time-lapse decorando una tarta de boda">
     </div>
     <div class="form-group">
-      <label>What made it work?</label>
-      <input type="text" name="comp_notes" value="{{ c.get('notes', '') }}" placeholder="Satisfying process video, good music, clear result at end">
+      <label>¿Qué lo hizo funcionar?</label>
+      <input type="text" name="comp_notes" value="{{ c.get('notes', '') }}" placeholder="Vídeo de proceso satisfactorio, buena música, resultado claro al final">
     </div>
   </div>
 
   <!-- Notes -->
   <div class="card">
-    <div class="form-section-title">📝 Your Notes</div>
+    <div class="form-section-title">📝 Notas manuales</div>
     <div class="form-group">
-      <label>Anything else from this week — customer feedback, DM questions, ideas, things you noticed</label>
-      <textarea name="manual_notes" rows="4" placeholder="A customer asked me how long cakes take to order. Lots of people at the market were surprised we do gluten-free options. Thinking of showing the decoration process more.">{{ m.manual_notes or '' }}</textarea>
+      <label>Cualquier cosa de esta semana — feedback de clientes, preguntas de DMs, ideas, cosas que notaste</label>
+      <textarea name="manual_notes" rows="4" placeholder="Un cliente preguntó cuánto tardan los pedidos. Varios sorprendidos de que hacemos sin gluten. Pienso mostrar más el proceso de decoración.">{{ m.manual_notes or '' }}</textarea>
     </div>
   </div>
 
-  <button type="submit" class="btn btn-primary btn-lg">Save metrics</button>
+  <button type="submit" class="btn btn-primary btn-lg">Guardar métricas</button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function pullData() {
+  const btn = document.getElementById('pull-btn');
+  const icon = document.getElementById('pull-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spinner"></span>';
+
+  fetch('/api/pull-data', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      icon.textContent = '✓';
+      btn.disabled = false;
+      // Reload the page to show updated data
+      setTimeout(() => window.location.reload(), 800);
+    })
+    .catch(err => {
+      icon.textContent = '🔄';
+      btn.disabled = false;
+      alert('Error al actualizar datos: ' + err.message);
+    });
+}
+</script>
 {% endblock %}

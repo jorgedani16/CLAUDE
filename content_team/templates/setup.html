@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Settings{% endblock %}
+{% block title %}Configuración{% endblock %}
 {% block content %}
-<h1>Settings</h1>
-<p class="subtitle">Tell your content team about your business. You only do this once.</p>
+<h1>Configuración</h1>
+<p class="subtitle">Cuéntale a tu equipo de contenido sobre tu negocio. Solo lo haces una vez.</p>
 
 <form method="POST" action="/setup">
   <div class="card">
@@ -11,16 +11,16 @@
       <label>Anthropic API Key</label>
       <input type="password" name="api_key" value="{{ settings.api_key }}" placeholder="sk-ant-...">
       <p style="font-size:12px;color:var(--muted);margin-top:6px">
-        Get your free key at <strong>console.anthropic.com</strong> → API Keys. Each pipeline run costs ~€0.20.
+        Obtén tu clave gratis en <strong>console.anthropic.com</strong> → API Keys. Cada ejecución del pipeline cuesta ~€0.20.
       </p>
     </div>
   </div>
 
   <div class="card">
-    <div class="form-section-title">🏢 Your Business</div>
+    <div class="form-section-title">🏢 Tu Negocio</div>
     <div class="form-row">
       <div class="form-group">
-        <label>Business Name</label>
+        <label>Nombre del negocio</label>
         <input type="text" name="business_name" value="{{ settings.business_name }}" placeholder="Pastelería La Merced">
       </div>
       <div class="form-group">
@@ -30,44 +30,72 @@
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>City / Location</label>
-        <input type="text" name="location" value="{{ settings.location }}" placeholder="Valencia, Spain">
+        <label>Ciudad / Ubicación</label>
+        <input type="text" name="location" value="{{ settings.location }}" placeholder="Valencia, España">
       </div>
       <div class="form-group">
-        <label>Website</label>
+        <label>Web</label>
         <input type="text" name="website" value="{{ settings.website }}" placeholder="pastelerialamerced.es">
       </div>
     </div>
     <div class="form-group">
-      <label>What do you sell? (be specific)</label>
-      <textarea name="niche" rows="2" placeholder="Custom celebration cakes for weddings, birthdays, and special events. Made to order, fully personalized design, pickup in Valencia.">{{ settings.niche }}</textarea>
+      <label>¿Qué vendes? (sé específico)</label>
+      <textarea name="niche" rows="2" placeholder="Tartas personalizadas para bodas, cumpleaños y eventos especiales. Diseño online. Recogida en Valencia.">{{ settings.niche }}</textarea>
     </div>
   </div>
 
   <div class="card">
-    <div class="form-section-title">🎯 Your Audience & Voice</div>
+    <div class="form-section-title">🎯 Tu Audiencia y Voz</div>
     <div class="form-group">
-      <label>Who is your ideal customer?</label>
-      <textarea name="target_audience" rows="2" placeholder="Women 25-45 in Valencia planning a special occasion — weddings, baby showers, birthdays. They want a unique cake that looks beautiful and tastes amazing.">{{ settings.target_audience }}</textarea>
+      <label>¿Quién es tu cliente ideal?</label>
+      <textarea name="target_audience" rows="2" placeholder="Hombres y mujeres de 20-40 en Valencia con un evento próximo.">{{ settings.target_audience }}</textarea>
     </div>
     <div class="form-group">
-      <label>Your brand voice (how do you talk to customers?)</label>
-      <textarea name="brand_voice" rows="2" placeholder="Warm, artisan, proud of the craft. Not corporate. Speaks like a local bakery owner who loves what they do.">{{ settings.brand_voice }}</textarea>
+      <label>Tu voz de marca (¿cómo hablas con tus clientes?)</label>
+      <textarea name="brand_voice" rows="2" placeholder="Directo, cercano, artesanal. Sin corporativismo.">{{ settings.brand_voice }}</textarea>
     </div>
     <div class="form-group">
-      <label>Your main offer / call to action</label>
-      <input type="text" name="main_cta" value="{{ settings.main_cta }}" placeholder="DM us to request your custom cake / visit pastelerialamerced.es">
+      <label>Tu CTA principal</label>
+      <input type="text" name="main_cta" value="{{ settings.main_cta }}" placeholder="Diseña la tuya ahora — visita el enlace en la descripción ■">
     </div>
   </div>
 
   <div class="card">
-    <div class="form-section-title">🕵️ Competitors (optional)</div>
+    <div class="form-section-title">🔌 Integraciones automáticas</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      Las integraciones son opcionales. Sin ellas, introduces los datos manualmente.
+    </p>
+
     <div class="form-group">
-      <label>Competitor Instagram handles (comma separated)</label>
-      <input type="text" name="competitors" value="{{ settings.competitors }}" placeholder="@pasteleriavalencia, @cakesbcn">
+      <label>GA4 Property ID</label>
+      <input type="text" name="ga4_property_id" value="{{ settings.ga4_property_id }}" placeholder="123456789">
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">
+        Encuéntralo en GA4 → Admin → Property Settings. Formato: 123456789
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label>Google Service Account JSON (ruta del archivo)</label>
+      <input type="text" name="google_credentials_path" value="{{ settings.google_credentials_path }}" placeholder="/ruta/a/credenciales.json">
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">
+        Sube el archivo JSON de cuenta de servicio de Google Cloud. Necesitas habilitar GA4 API y Search Console API.
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label>Search Console Site URL</label>
+      <input type="text" name="search_console_site_url" value="{{ settings.search_console_site_url }}" placeholder="https://pastelerialamerced.es">
+    </div>
+
+    <div class="form-group">
+      <label>Squarespace API Key</label>
+      <input type="password" name="squarespace_api_key" value="{{ settings.squarespace_api_key }}" placeholder="...">
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">
+        Ajustes de Squarespace → Avanzado → Claves de API
+      </p>
     </div>
   </div>
 
-  <button type="submit" class="btn btn-primary btn-lg">Save settings</button>
+  <button type="submit" class="btn btn-primary btn-lg">Guardar configuración</button>
 </form>
 {% endblock %}

@@ -60,15 +60,17 @@ Sé directo. Sin relleno. Usa números. Señala todo lo que necesite cambio inme
 def run(instagram_metrics: dict, ga4_data: dict, sc_data: dict, sq_data: dict) -> str:
     today = date.today().isoformat()
 
-    ga4_text = json.dumps(ga4_data, indent=2, ensure_ascii=False)
-    sc_text = json.dumps(sc_data, indent=2, ensure_ascii=False)
-    sq_text = json.dumps(sq_data, indent=2, ensure_ascii=False)
     ig_text = json.dumps(instagram_metrics, indent=2, ensure_ascii=False)
 
+    ga4_text = json.dumps(ga4_data, indent=2, ensure_ascii=False)
     if "error" in ga4_data:
         ga4_text = f"DATOS NO DISPONIBLES — {ga4_data['error']}"
+
+    sc_text = json.dumps(sc_data, indent=2, ensure_ascii=False)
     if "error" in sc_data:
         sc_text = f"DATOS NO DISPONIBLES — {sc_data['error']}"
+
+    sq_text = json.dumps(sq_data, indent=2, ensure_ascii=False)
     if "error" in sq_data:
         sq_text = f"DATOS NO DISPONIBLES — {sq_data['error']}"
 

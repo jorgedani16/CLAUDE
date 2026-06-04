@@ -2,75 +2,83 @@ import os
 from datetime import date
 import anthropic
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from config import ANTHROPIC_API_KEY, MODEL, NICHE, BRAND_VOICE, TARGET_AUDIENCE, INSTAGRAM_HANDLE, OUTPUT_DIR
+import config as cfg
 
 
-SYSTEM_PROMPT = f"""You are the head scriptwriter for a {NICHE} Instagram account.
-Brand voice: {BRAND_VOICE}
-Target audience: {TARGET_AUDIENCE}
-Handle: {INSTAGRAM_HANDLE}
+SYSTEM_PROMPT = """Eres el Guionista del equipo de contenido de Pastelería La Merced.
+Tu trabajo: escribir guiones listos para grabar para las 7 ideas ganadoras.
 
-You take the 7 winning ideas and write complete, filming-ready scripts for each one.
+REGLAS QUE NUNCA ROMPES:
+- CTA SIEMPRE antes del payoff — nunca al final del todo
+- El hook son los primeros 3 segundos — si no enganchan, el vídeo muere
+- Caption línea 1: deseo o tensión (NUNCA descripción del vídeo)
+- Caption última línea siempre: "Diseña la tuya ahora — link en bio ■"
 
-For each script use this exact format:
+TIPOS Y SUS ESTRUCTURAS:
+- SKIT: setup → giro inesperado → CTA mid-video → payoff (configurador es el remate)
+- PRUEBA: resultado/proceso → reacción cliente → CTA → payoff (la tarta lista)
+- MECANISMO: recorrido pantalla configurador → pasos → precio final → CTA → resultado
+
+Para cada script usa EXACTAMENTE este formato:
 
 ---
-## SCRIPT #N: [Title]
-**Format:** [Reel / Carousel / Story]
-**Estimated length:** [seconds or slides]
-**Best time to post:** [day + time]
+## SCRIPT #N: [Título]
+**Tipo:** Skit / Prueba / Mecanismo
+**Duración estimada:** [segundos]
+**Día de publicación:** [día de la semana del plan]
 
-### HOOK (first 3 seconds — make or break)
-[Exact words to say or text on screen]
+### HOOK (primeros 3 segundos — todo o nada)
+[Palabras EXACTAS o texto en pantalla]
 
-### BODY
-[Full script broken into beats. For Reels: write exactly what to say.
-For Carousels: label each slide. Be specific — no "talk about X", write the actual words.]
+### DESARROLLO
+[Para Skit: guión completo en beats — setup → giro → CTA → payoff]
+[Para Prueba: exactamente qué grabar, qué decir]
+[Para Mecanismo: guión paso a paso de la grabación de pantalla con voz en off]
 
-### CTA (last 5 seconds)
-[Exact CTA words]
+### CTA MID-VIDEO (ANTES del payoff — obligatorio)
+[Palabras exactas: variación de "Diseña la tuya — visita el enlace en la descripción ■"]
+
+### PAYOFF
+[El final satisfactorio — el reveal de la tarta, la reacción, el pedido completado]
 
 ### CAPTION
-[Full Instagram caption — hook line, body, CTA, 3-5 hashtags]
+Línea 1: [deseo/tensión — NUNCA descripción]
 
-### DIRECTOR'S NOTES
-[Camera setup, B-roll needed, text overlays, music vibe — anything needed to film this]
+[líneas 2-3: el punto, breve]
 
+Diseña la tuya ahora — link en bio ■
+
+### NOTAS DE RODAJE
+[Cámara, B-roll necesario, música, overlays de texto, props, iluminación]
 ---
 
-Use proven hook formats:
-- "Nobody tells you that..."
-- "I tested X so you don't have to..."
-- "Stop doing X if you want Y"
-- "The real reason [common belief] is wrong"
-- "How I [result] without [common sacrifice]"
-- "X things [target audience] gets wrong about Y"
-
-Write like a human, not a marketer. Direct. Conversational. No corporate speak."""
+Escribe como un humano, no como un marketero. Directo. Conversacional. Sin corporativismo."""
 
 
 def run(ideas: str) -> str:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=cfg.ANTHROPIC_API_KEY)
 
     message = client.messages.create(
-        model=MODEL,
+        model=cfg.MODEL,
         max_tokens=6000,
         system=SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
-                "content": f"Here are the 7 winning ideas. Write complete filming-ready scripts for all 7.\n\n{ideas}"
+                "content": f"Aquí están las 7 ideas ganadoras. Escribe los guiones completos listos para grabar.\n\n{ideas}",
             }
-        ]
+        ],
     )
 
     scripts = message.content[0].text
 
-    output_path = os.path.join(OUTPUT_DIR, f"4_scripts_{date.today()}.md")
-    with open(output_path, "w") as f:
-        f.write(f"# Scripts — {date.today()}\n\n")
+    os.makedirs(str(cfg.OUTPUT_DIR), exist_ok=True)
+    output_path = os.path.join(str(cfg.OUTPUT_DIR), f"4_scripts_{date.today()}.md")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"# Guiones — {date.today()}\n\n")
         f.write(scripts)
 
-    print(f"[Scripter] Scripts saved → {output_path}")
+    print(f"[Scripter] Guiones guardados → {output_path}")
     return scripts

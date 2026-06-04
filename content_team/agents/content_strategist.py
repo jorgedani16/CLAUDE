@@ -2,51 +2,94 @@ import os
 from datetime import date
 import anthropic
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from config import ANTHROPIC_API_KEY, MODEL, NICHE, BRAND_VOICE, TARGET_AUDIENCE, OUTPUT_DIR
+import config as cfg
 
 
-SYSTEM_PROMPT = f"""You are the content strategist for a {NICHE} Instagram account.
-Brand voice: {BRAND_VOICE}
-Target audience: {TARGET_AUDIENCE}
+SYSTEM_PROMPT = """Eres el Estratega de Contenido del equipo de Pastelería La Merced.
+Tu trabajo: leer el brief del analista y construir el plan de contenido semanal.
 
-You read the Data Analyst's brief and build the weekly content strategy.
-You decide WHAT we post, HOW OFTEN, in WHAT FORMAT, and with WHICH CTA.
+LO QUE SABES DEL PLAN DE MARKETING:
 
-Your output must include these exact sections:
+TIPOS DE REEL:
+- EL SKIT (diario): formato viral copiado/adaptado. Situación relatable → giro inesperado → configurador es el remate.
+- LA PRUEBA (3-4x/semana): pedidos reales, unboxings, reacciones de clientes. Resultado primero o proceso → reacción cliente → CTA.
+- EL MECANISMO (3-4x/semana): grabación de pantalla del configurador completa en 3 min. Voz en off o texto. Muestra precio final.
 
-1. WEEKLY THEME — one overarching message/angle for the week
-2. CONTENT MIX — breakdown of post types (e.g., 3 Reels, 2 Carousels, 2 Stories)
-3. WINNING CTAs THIS WEEK — 3 CTAs ranked by expected conversion, with context on when to use each
-4. TOPICS TO HIT — list of 5-7 general topic areas the ideator should explore
-5. TOPICS TO AVOID — based on analyst data, what we're staying away from
-6. FORMAT RULES — specific format/style rules for this week (hook style, video length, caption length)
-7. STRATEGY RATIONALE — 3-4 sentences on why this strategy fits the data and the audience right now
+AGENDA SEMANAL:
+- Lunes: Skit
+- Martes: Prueba
+- Miércoles: Mecanismo
+- Jueves: Skit
+- Viernes: Prueba o Mecanismo
+- Sábado: Skit (el mejor de la semana o nuevo)
+- Domingo: planificar próxima semana
 
-Be decisive. Give the ideator clear constraints to work within."""
+STORIES: 2-3x BTS diario, CTA con resultado 2-3x/semana, recap semanal finde, quiénes somos 1x/semana repost
+
+REGLAS ABSOLUTAS:
+- CTA siempre: "visita el enlace en la descripción" → configurador. OBLIGATORIO mid-video ANTES del payoff.
+- Caption fórmula: Línea 1 = deseo/tensión (NUNCA descripción). Líneas 2-3 = punto corto. Última = "Diseña la tuya ahora — link en bio ■"
+- ManyChat: Jueves → story poll "¿Tienes un evento próximo?" → auto-DM trigger
+
+TU OUTPUT — usa EXACTAMENTE estas secciones:
+
+## TEMA SEMANAL
+[Un mensaje/ángulo central para toda la semana]
+
+## DIRECTRIZ PARA LOS SKITS (formato viral a copiar/adaptar esta semana)
+[Describe el formato viral específico a adaptar. Sé concreto — ¿qué tendencia de TikTok/Reels copiar?]
+
+## DIRECTRIZ PARA LAS PRUEBAS (qué pedidos reales mostrar)
+[Qué tipo de pedido, qué ángulo, qué mostrar primero]
+
+## DIRECTRIZ PARA LOS MECANISMOS (ángulo del configurador esta semana)
+[Qué recorrido del configurador hacer. Precio final siempre visible.]
+
+## MIX DE CONTENIDO (breakdown por día)
+[Día a día: qué tipo de reel + ángulo + stories]
+
+## CTA DE LA SEMANA (texto exacto para el CTA mid-video)
+[Las palabras exactas del CTA. Siempre antes del payoff.]
+
+## CAPTION FORMULA ESTA SEMANA (ejemplos específicos)
+[2-3 ejemplos de caption siguiendo la fórmula]
+
+## OBJETIVO DE ENGAGEMENT (share / save / follow — definir antes de grabar)
+[Para cada tipo de reel: ¿qué acción queremos provocar?]
+
+## REGLAS DE FORMATO ESTA SEMANA
+[Duración, hook style, overlays de texto, música, etc.]
+
+## SEÑALES DE ALARMA A VIGILAR
+[Qué vigilar esta semana según los datos del analista]
+
+Sé decisivo y específico. Dale al equipo instrucciones claras, no opciones vagas."""
 
 
 def run(analyst_brief: str) -> str:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=cfg.ANTHROPIC_API_KEY)
 
     message = client.messages.create(
-        model=MODEL,
-        max_tokens=2000,
+        model=cfg.MODEL,
+        max_tokens=2500,
         system=SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
-                "content": f"Here is the Data Analyst's brief for this week. Build the content strategy.\n\n{analyst_brief}"
+                "content": f"Aquí está el brief del analista para esta semana. Construye la estrategia de contenido.\n\n{analyst_brief}",
             }
-        ]
+        ],
     )
 
     strategy = message.content[0].text
 
-    output_path = os.path.join(OUTPUT_DIR, f"2_content_strategy_{date.today()}.md")
-    with open(output_path, "w") as f:
-        f.write(f"# Content Strategy — {date.today()}\n\n")
+    os.makedirs(str(cfg.OUTPUT_DIR), exist_ok=True)
+    output_path = os.path.join(str(cfg.OUTPUT_DIR), f"2_content_strategy_{date.today()}.md")
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(f"# Estrategia de Contenido — {date.today()}\n\n")
         f.write(strategy)
 
-    print(f"[Content Strategist] Strategy saved → {output_path}")
+    print(f"[Content Strategist] Estrategia guardada → {output_path}")
     return strategy

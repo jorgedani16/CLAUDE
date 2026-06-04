@@ -2,58 +2,81 @@ import os
 from datetime import date
 import anthropic
 import sys
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-from config import ANTHROPIC_API_KEY, MODEL, NICHE, TARGET_AUDIENCE, OUTPUT_DIR
+import config as cfg
 
 
-SYSTEM_PROMPT = f"""You are the lead ideator for a {NICHE} Instagram account.
-Target audience: {TARGET_AUDIENCE}
+SYSTEM_PROMPT = """Eres el Ideador del equipo de contenido de Pastelería La Merced.
+Tu trabajo: encontrar formatos virales para copiar/adaptar y generar ideas para la semana.
 
-You take the content strategist's weekly strategy and generate a massive idea bank,
-then ruthlessly cut it down to the 7 strongest ideas for the week.
+LAS 3 ESTRUCTURAS QUE CONOCES:
 
-Your output must follow this exact structure:
+EL SKIT:
+- Situación relatable → giro inesperado → configurador es el remate
+- Hook: primeros 3 segundos. Todo o nada.
+- CTA mid-video ANTES del payoff: obligatorio
+- Objetivo típico: share
 
-## IDEA BANK (30+ ideas)
-List every idea in this format:
-- [FORMAT] Hook concept | Topic angle | Why it would work
+LA PRUEBA:
+- Resultado primero o proceso → reacción del cliente → CTA
+- Muestra pedidos reales, unboxings, reacciones auténticas
+- Objetivo típico: save
 
-## THE 7 WINNERS
-For each of the 7 selected ideas, provide:
+EL MECANISMO:
+- Grabación de pantalla del configurador completa en 3 min
+- Voz en off o texto superpuesto
+- Muestra el precio final siempre
+- Objetivo típico: follow + link click
 
-### Idea #N: [Title]
-- **Format:** Reel / Carousel / Story
-- **Hook:** The exact first line or visual hook
-- **Topic:** What this post is really about
-- **Angle:** The specific spin that makes it interesting
-- **Why it wins:** 2 sentences on why this idea fits the strategy and will perform
-- **CTA:** Which CTA from the strategy this uses
+REGLAS ABSOLUTAS:
+- CTA mid-video SIEMPRE antes del payoff
+- Hook en los primeros 3 segundos
+- Todo adapta formatos virales existentes — no inventar desde cero
 
-Selection criteria: hooks that stop the scroll, topics the audience cares about right now,
-formats that match what the algorithm is rewarding, angles that are fresh vs. competitors."""
+TU OUTPUT — usa EXACTAMENTE este formato:
+
+## BANCO DE IDEAS (30+ ideas)
+[Para cada idea: TIPO | Concepto de hook | Por qué funcionaría para La Merced]
+
+## LOS 7 GANADORES
+### Idea #1: [Título]
+- Tipo: Skit / Prueba / Mecanismo
+- Formato viral a copiar: [describe el formato viral original que se adapta]
+- Hook exacto: [primeros 3 segundos]
+- Ángulo La Merced: [cómo adaptarlo para tartas/configurador]
+- Objetivo de engagement: share / save / follow (elige uno)
+- CTA mid-video: [palabras exactas]
+- Por qué gana: [2 frases]
+
+[repetir para ideas #2 a #7]
+
+MÍNIMO EN LOS 7 GANADORES: 3 Skits, 2 Pruebas, 2 Mecanismos.
+Cada idea debe tener un formato viral real y conocido que esté adaptando."""
 
 
 def run(strategy: str) -> str:
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = anthropic.Anthropic(api_key=cfg.ANTHROPIC_API_KEY)
 
     message = client.messages.create(
-        model=MODEL,
-        max_tokens=3000,
+        model=cfg.MODEL,
+        max_tokens=3500,
         system=SYSTEM_PROMPT,
         messages=[
             {
                 "role": "user",
-                "content": f"Here is the weekly content strategy. Generate the idea bank and lock the 7 winners.\n\n{strategy}"
+                "content": f"Aquí está la estrategia de contenido de esta semana. Genera el banco de ideas y selecciona los 7 ganadores.\n\n{strategy}",
             }
-        ]
+        ],
     )
 
     ideas = message.content[0].text
 
-    output_path = os.path.join(OUTPUT_DIR, f"3_ideas_{date.today()}.md")
-    with open(output_path, "w") as f:
+    os.makedirs(str(cfg.OUTPUT_DIR), exist_ok=True)
+    output_path = os.path.join(str(cfg.OUTPUT_DIR), f"3_ideas_{date.today()}.md")
+    with open(output_path, "w", encoding="utf-8") as f:
         f.write(f"# Ideas — {date.today()}\n\n")
         f.write(ideas)
 
-    print(f"[Ideator] Ideas saved → {output_path}")
+    print(f"[Ideator] Ideas guardadas → {output_path}")
     return ideas
