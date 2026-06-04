@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Weekly Metrics{% endblock %}
+{% block content %}
+<h1>Weekly Metrics</h1>
+<p class="subtitle">Fill this in every Monday from your Instagram Insights. Takes about 5 minutes.</p>
+
+<div class="alert alert-warning" style="font-size:13px">
+  📱 <strong>Where to find these numbers:</strong> Open Instagram → your profile → tap the bar chart icon (Professional Dashboard) → then "Content you shared" for post stats.
+</div>
+
+<form method="POST" action="/metrics">
+  <!-- Account -->
+  <div class="card">
+    <div class="form-section-title">📈 Account Overview</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Total Followers</label>
+        <input type="number" name="followers" value="{{ m.account.followers or '' }}" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>New Followers This Week</label>
+        <input type="number" name="followers_gained" value="{{ m.account.followers_gained_this_week or '' }}" placeholder="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Total Reach This Week</label>
+        <input type="number" name="reach" value="{{ m.account.reach or '' }}" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Profile Visits</label>
+        <input type="number" name="profile_visits" value="{{ m.account.profile_visits or '' }}" placeholder="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>DM Leads / Inquiries This Week</label>
+        <input type="number" name="dm_leads" value="{{ m.dm_leads_this_week or '' }}" placeholder="0">
+      </div>
+      <div class="form-group">
+        <label>Link in Bio Clicks</label>
+        <input type="number" name="link_clicks" value="{{ m.link_in_bio_clicks or '' }}" placeholder="0">
+      </div>
+    </div>
+  </div>
+
+  <!-- Top posts -->
+  <div class="card">
+    <div class="form-section-title">🏆 Top 3 Posts This Week (best performers)</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">Find these in Instagram Insights → "Most reached" or "Most liked"</p>
+
+    {% for i in range(3) %}
+    {% set p = m.top_posts[i] if m.top_posts|length > i else {} %}
+    <div style="padding:16px;background:var(--bg);border:1px solid var(--border);border-radius:8px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:12px">POST #{{ i+1 }}</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Format</label>
+          <select name="top_type_{{ i }}">
+            <option value="Reel" {{ 'selected' if p.get('type')=='Reel' }}>Reel</option>
+            <option value="Carousel" {{ 'selected' if p.get('type')=='Carousel' }}>Carousel</option>
+            <option value="Photo" {{ 'selected' if p.get('type')=='Photo' }}>Photo</option>
+            <option value="Story" {{ 'selected' if p.get('type')=='Story' }}>Story</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Views / Reach</label>
+          <input type="number" name="top_views_{{ i }}" value="{{ p.get('views', '') }}" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Hook (first line of caption or first words spoken in the video)</label>
+        <input type="text" name="top_hook_{{ i }}" value="{{ p.get('hook', '') }}" placeholder="e.g. This is the cake we made for a wedding last Saturday...">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Likes</label>
+          <input type="number" name="top_likes_{{ i }}" value="{{ p.get('likes', '') }}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Comments</label>
+          <input type="number" name="top_comments_{{ i }}" value="{{ p.get('comments', '') }}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Shares</label>
+          <input type="number" name="top_shares_{{ i }}" value="{{ p.get('shares', '') }}" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Saves</label>
+          <input type="number" name="top_saves_{{ i }}" value="{{ p.get('saves', '') }}" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>What happened? (DMs, comments, any real reaction)</label>
+        <input type="text" name="top_outcome_{{ i }}" value="{{ p.get('outcome', '') }}" placeholder="Got 3 DMs asking for prices, several saved it">
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Bottom posts -->
+  <div class="card">
+    <div class="form-section-title">💀 Worst Post This Week</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">The one that flopped. Helps the analyst know what to avoid.</p>
+    {% set b = m.bottom_posts[0] if m.bottom_posts else {} %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>Format</label>
+        <select name="bad_type">
+          <option value="Reel" {{ 'selected' if b.get('type')=='Reel' }}>Reel</option>
+          <option value="Carousel" {{ 'selected' if b.get('type')=='Carousel' }}>Carousel</option>
+          <option value="Photo" {{ 'selected' if b.get('type')=='Photo' }}>Photo</option>
+          <option value="Story" {{ 'selected' if b.get('type')=='Story' }}>Story</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Views / Reach</label>
+        <input type="number" name="bad_views" value="{{ b.get('views', '') }}" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Hook</label>
+      <input type="text" name="bad_hook" value="{{ b.get('hook', '') }}" placeholder="What was the opening of this post?">
+    </div>
+    <div class="form-group">
+      <label>Why do you think it flopped?</label>
+      <input type="text" name="bad_outcome" value="{{ b.get('outcome', '') }}" placeholder="Bad lighting, boring topic, posted at wrong time...">
+    </div>
+  </div>
+
+  <!-- Competitors -->
+  <div class="card">
+    <div class="form-section-title">🕵️ Competitor Intel (optional but valuable)</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">Did you see a competitor post something that got lots of views or engagement this week?</p>
+    {% set c = m.competitors_observed[0] if m.competitors_observed else {} %}
+    <div class="form-row">
+      <div class="form-group">
+        <label>Their Instagram handle</label>
+        <input type="text" name="comp_handle" value="{{ c.get('handle', '') }}" placeholder="@competidorvalencia">
+      </div>
+      <div class="form-group">
+        <label>Approx views / likes</label>
+        <input type="text" name="comp_views" value="{{ c.get('approx_views', '') }}" placeholder="5000 views">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Their hook / what the post was about</label>
+      <input type="text" name="comp_hook" value="{{ c.get('viral_post_hook', '') }}" placeholder="Time-lapse of decorating a 5-tier wedding cake">
+    </div>
+    <div class="form-group">
+      <label>What made it work?</label>
+      <input type="text" name="comp_notes" value="{{ c.get('notes', '') }}" placeholder="Satisfying process video, good music, clear result at end">
+    </div>
+  </div>
+
+  <!-- Notes -->
+  <div class="card">
+    <div class="form-section-title">📝 Your Notes</div>
+    <div class="form-group">
+      <label>Anything else from this week — customer feedback, DM questions, ideas, things you noticed</label>
+      <textarea name="manual_notes" rows="4" placeholder="A customer asked me how long cakes take to order. Lots of people at the market were surprised we do gluten-free options. Thinking of showing the decoration process more.">{{ m.manual_notes or '' }}</textarea>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg">Save metrics</button>
+</form>
+{% endblock %}

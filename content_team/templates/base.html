@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Content Team{% endblock %} — La Merced</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="layout">
+  <nav>
+    <div class="nav-brand">
+      <h2>🎂 La Merced</h2>
+      <p>Content Team</p>
+    </div>
+    <a href="/" class="{{ 'active' if active == 'home' }}">
+      <span class="icon">🏠</span> Dashboard
+    </a>
+    <a href="/metrics" class="{{ 'active' if active == 'metrics' }}">
+      <span class="icon">📊</span> Weekly Metrics
+    </a>
+    <a href="/run" class="{{ 'active' if active == 'run' }}">
+      <span class="icon">▶️</span> Run Pipeline
+    </a>
+    <a href="/outputs" class="{{ 'active' if active == 'outputs' }}">
+      <span class="icon">📄</span> View Outputs
+    </a>
+    <a href="/setup" class="{{ 'active' if active == 'setup' }}">
+      <span class="icon">⚙️</span> Settings
+    </a>
+  </nav>
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="alert alert-{{ cat }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% block scripts %}{% endblock %}
+</body>
+</html>

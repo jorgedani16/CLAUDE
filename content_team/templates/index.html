@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Good {{ greeting }}, {{ settings.business_name }} 👋</h1>
+<p class="subtitle">Your AI content team is ready. Here's where things stand this week.</p>
+
+{% if not settings.api_key %}
+<div class="alert alert-warning">
+  ⚠️ No API key set yet. Go to <a href="/setup" style="color:inherit;font-weight:700">Settings</a> to add your Anthropic API key before running the pipeline.
+</div>
+{% endif %}
+
+<!-- Pipeline overview -->
+<div class="card">
+  <div class="card-header">
+    <h2 style="margin:0">Your Content Team</h2>
+    <span class="badge badge-green">5 agents ready</span>
+  </div>
+  <div class="pipeline">
+    <div class="agent-chip">
+      <span class="agent-icon">📊</span>
+      <span class="agent-name">Data Analyst</span>
+      <span class="agent-role">Reads your metrics, finds what's working</span>
+    </div>
+    <span class="agent-arrow">→</span>
+    <div class="agent-chip">
+      <span class="agent-icon">🧠</span>
+      <span class="agent-name">Strategist</span>
+      <span class="agent-role">Sets the weekly content plan</span>
+    </div>
+    <span class="agent-arrow">→</span>
+    <div class="agent-chip">
+      <span class="agent-icon">💡</span>
+      <span class="agent-name">Ideator</span>
+      <span class="agent-role">30+ ideas → 7 winners</span>
+    </div>
+    <span class="agent-arrow">→</span>
+    <div class="agent-chip">
+      <span class="agent-icon">✍️</span>
+      <span class="agent-name">Scripter</span>
+      <span class="agent-role">Filming-ready scripts</span>
+    </div>
+    <span class="agent-arrow">→</span>
+    <div class="agent-chip">
+      <span class="agent-icon">📅</span>
+      <span class="agent-name">Publisher</span>
+      <span class="agent-role">Schedule + DM audit</span>
+    </div>
+  </div>
+</div>
+
+<!-- Steps -->
+<div class="card">
+  <h2>How to use this every week</h2>
+  <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+    <div class="flex">
+      <span style="background:var(--accent);color:#0f0f0f;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">1</span>
+      <div>
+        <strong>Fill in your metrics</strong> — go to <a href="/metrics" style="color:var(--accent)">Weekly Metrics</a> and enter last week's Instagram numbers (takes 5 min)
+      </div>
+    </div>
+    <div class="flex">
+      <span style="background:var(--accent);color:#0f0f0f;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">2</span>
+      <div>
+        <strong>Run the pipeline</strong> — click <a href="/run" style="color:var(--accent)">Run Pipeline</a> and wait ~2 minutes while your team works
+      </div>
+    </div>
+    <div class="flex">
+      <span style="background:var(--accent);color:#0f0f0f;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">3</span>
+      <div>
+        <strong>Review the scripts</strong> — go to <a href="/outputs" style="color:var(--accent)">View Outputs</a>, read your 7 scripts, make any edits
+      </div>
+    </div>
+    <div class="flex">
+      <span style="background:var(--accent);color:#0f0f0f;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0">4</span>
+      <div>
+        <strong>Film & post</strong> — use the publishing schedule to know when to post each piece
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Last run -->
+{% if last_run %}
+<div class="card">
+  <div class="card-header">
+    <h2 style="margin:0">Last Pipeline Run</h2>
+    <span class="badge badge-green">✓ Complete</span>
+  </div>
+  <div class="grid-3">
+    {% for f in last_run %}
+    <div style="padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">{{ f.label }}</div>
+      <div style="font-size:13px;font-weight:600">{{ f.date }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-16">
+    <a href="/outputs" class="btn btn-outline btn-sm">View outputs →</a>
+  </div>
+</div>
+{% else %}
+<div class="card" style="border-style:dashed;text-align:center;padding:40px">
+  <div style="font-size:40px;margin-bottom:12px">🚀</div>
+  <h3>No runs yet</h3>
+  <p class="text-muted" style="margin-bottom:20px">Fill in your metrics then run the pipeline to generate your first week of content.</p>
+  <div class="flex" style="justify-content:center;gap:12px">
+    <a href="/metrics" class="btn btn-outline">Fill in metrics</a>
+    <a href="/run" class="btn btn-primary">Run pipeline</a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

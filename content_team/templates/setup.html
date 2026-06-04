@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Settings{% endblock %}
+{% block content %}
+<h1>Settings</h1>
+<p class="subtitle">Tell your content team about your business. You only do this once.</p>
+
+<form method="POST" action="/setup">
+  <div class="card">
+    <div class="form-section-title">🔑 API Key</div>
+    <div class="form-group">
+      <label>Anthropic API Key</label>
+      <input type="password" name="api_key" value="{{ settings.api_key }}" placeholder="sk-ant-...">
+      <p style="font-size:12px;color:var(--muted);margin-top:6px">
+        Get your free key at <strong>console.anthropic.com</strong> → API Keys. Each pipeline run costs ~€0.20.
+      </p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🏢 Your Business</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Business Name</label>
+        <input type="text" name="business_name" value="{{ settings.business_name }}" placeholder="Pastelería La Merced">
+      </div>
+      <div class="form-group">
+        <label>Instagram Handle</label>
+        <input type="text" name="instagram_handle" value="{{ settings.instagram_handle }}" placeholder="@pastelerialamerced">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>City / Location</label>
+        <input type="text" name="location" value="{{ settings.location }}" placeholder="Valencia, Spain">
+      </div>
+      <div class="form-group">
+        <label>Website</label>
+        <input type="text" name="website" value="{{ settings.website }}" placeholder="pastelerialamerced.es">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>What do you sell? (be specific)</label>
+      <textarea name="niche" rows="2" placeholder="Custom celebration cakes for weddings, birthdays, and special events. Made to order, fully personalized design, pickup in Valencia.">{{ settings.niche }}</textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🎯 Your Audience & Voice</div>
+    <div class="form-group">
+      <label>Who is your ideal customer?</label>
+      <textarea name="target_audience" rows="2" placeholder="Women 25-45 in Valencia planning a special occasion — weddings, baby showers, birthdays. They want a unique cake that looks beautiful and tastes amazing.">{{ settings.target_audience }}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Your brand voice (how do you talk to customers?)</label>
+      <textarea name="brand_voice" rows="2" placeholder="Warm, artisan, proud of the craft. Not corporate. Speaks like a local bakery owner who loves what they do.">{{ settings.brand_voice }}</textarea>
+    </div>
+    <div class="form-group">
+      <label>Your main offer / call to action</label>
+      <input type="text" name="main_cta" value="{{ settings.main_cta }}" placeholder="DM us to request your custom cake / visit pastelerialamerced.es">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🕵️ Competitors (optional)</div>
+    <div class="form-group">
+      <label>Competitor Instagram handles (comma separated)</label>
+      <input type="text" name="competitors" value="{{ settings.competitors }}" placeholder="@pasteleriavalencia, @cakesbcn">
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg">Save settings</button>
+</form>
+{% endblock %}

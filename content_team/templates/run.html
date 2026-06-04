@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Run Pipeline{% endblock %}
+{% block content %}
+<h1>Run Pipeline</h1>
+<p class="subtitle">Your 5-agent content team will run in sequence. Takes about 2 minutes.</p>
+
+{% if not settings.api_key %}
+<div class="alert alert-error">
+  ⚠️ No API key set. <a href="/setup" style="color:inherit;font-weight:700">Go to Settings first →</a>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="flex-between" style="margin-bottom:20px">
+    <div>
+      <h2 style="margin-bottom:4px">Start this week's pipeline</h2>
+      <p class="text-muted" style="font-size:13px">Make sure you've filled in your <a href="/metrics" style="color:var(--accent)">Weekly Metrics</a> first.</p>
+    </div>
+    <button id="run-btn" class="btn btn-primary btn-lg" onclick="startPipeline()" {% if not settings.api_key %}disabled{% endif %}>
+      ▶ Run now
+    </button>
+  </div>
+
+  <!-- Agent status -->
+  <div id="agent-status" style="display:none">
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+      {% for agent in agents %}
+      <div class="flex" id="status-{{ agent.id }}">
+        <span id="icon-{{ agent.id }}" style="font-size:18px;width:24px">⬜</span>
+        <div>
+          <span style="font-weight:600">{{ agent.name }}</span>
+          <span class="text-muted" style="font-size:13px"> — {{ agent.role }}</span>
+        </div>
+        <span id="badge-{{ agent.id }}" class="badge badge-gray" style="margin-left:auto">waiting</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div id="log-container" style="display:none">
+    <div class="log-box" id="log"></div>
+  </div>
+
+  <!-- Done state -->
+  <div id="done-state" style="display:none;text-align:center;padding:20px">
+    <div style="font-size:40px;margin-bottom:12px">✅</div>
+    <h3>Pipeline complete!</h3>
+    <p class="text-muted" style="margin-bottom:20px">All 5 agents finished. Your scripts are ready.</p>
+    <a href="/outputs" class="btn btn-primary">View your scripts →</a>
+  </div>
+
+  <!-- Error state -->
+  <div id="error-state" style="display:none;text-align:center;padding:20px">
+    <div style="font-size:40px;margin-bottom:12px">❌</div>
+    <h3 id="error-title">Something went wrong</h3>
+    <p class="text-muted" id="error-msg" style="margin-bottom:20px"></p>
+    <button class="btn btn-outline" onclick="location.reload()">Try again</button>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Run a single agent</h3>
+  <p class="text-muted" style="font-size:13px;margin-bottom:16px">If you only want to re-run one part (e.g., re-write scripts without re-running the whole pipeline).</p>
+  <div class="flex" style="flex-wrap:wrap;gap:10px">
+    {% for agent in agents %}
+    <button class="btn btn-outline btn-sm" onclick="startPipeline('{{ agent.id }}')" {% if not settings.api_key %}disabled{% endif %}>
+      {{ agent.emoji }} Run {{ agent.name }} only
+    </button>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const agents = {{ agents_json | safe }};
+
+function setAgentStatus(id, status) {
+  const icons = { waiting: '⬜', running: '🔄', done: '✅', error: '❌' };
+  const badges = { waiting: 'badge-gray', running: 'badge-amber', done: 'badge-green', error: 'badge-red' };
+  const labels = { waiting: 'waiting', running: 'running...', done: 'done', error: 'error' };
+  const iconEl = document.getElementById('icon-' + id);
+  const badgeEl = document.getElementById('badge-' + id);
+  if (iconEl) iconEl.textContent = icons[status] || '⬜';
+  if (badgeEl) {
+    badgeEl.className = 'badge ' + (badges[status] || 'badge-gray');
+    badgeEl.textContent = labels[status] || status;
+  }
+}
+
+function log(msg, cls) {
+  const el = document.getElementById('log');
+  const line = document.createElement('div');
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+async function startPipeline(only) {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Running...';
+
+  document.getElementById('agent-status').style.display = 'block';
+  document.getElementById('log-container').style.display = 'block';
+  document.getElementById('done-state').style.display = 'none';
+  document.getElementById('error-state').style.display = 'none';
+
+  const log_el = document.getElementById('log');
+  log_el.innerHTML = '';
+
+  // Reset all statuses
+  agents.forEach(a => setAgentStatus(a.id, 'waiting'));
+
+  log('Starting pipeline...', 'log-muted');
+
+  const url = '/api/run' + (only ? '?only=' + only : '');
+
+  try {
+    const resp = await fetch(url, { method: 'POST' });
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const text = decoder.decode(value);
+      const lines = text.split('\n').filter(l => l.startsWith('data: '));
+
+      for (const line of lines) {
+        const data = JSON.parse(line.slice(6));
+
+        if (data.type === 'agent_start') {
+          setAgentStatus(data.agent, 'running');
+          log('▶ ' + data.message, 'log-agent');
+        } else if (data.type === 'agent_done') {
+          setAgentStatus(data.agent, 'done');
+          log('✓ ' + data.message, 'log-done');
+        } else if (data.type === 'log') {
+          log('  ' + data.message, 'log-muted');
+        } else if (data.type === 'done') {
+          log('\nAll done! 🎉', 'log-done');
+          document.getElementById('done-state').style.display = 'block';
+          document.getElementById('log-container').style.display = 'none';
+        } else if (data.type === 'error') {
+          log('\nERROR: ' + data.message, 'log-error');
+          document.getElementById('error-state').style.display = 'block';
+          document.getElementById('error-title').textContent = 'Something went wrong';
+          document.getElementById('error-msg').textContent = data.message;
+          if (data.agent) setAgentStatus(data.agent, 'error');
+        }
+      }
+    }
+  } catch (e) {
+    log('Network error: ' + e.message, 'log-error');
+    document.getElementById('error-state').style.display = 'block';
+    document.getElementById('error-msg').textContent = e.message;
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '▶ Run again';
+}
+</script>
+{% endblock %}
