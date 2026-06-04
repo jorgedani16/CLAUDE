@@ -25,6 +25,6 @@ fi
 echo ""
 echo "Starting app... Opening browser in 2 seconds"
 sleep 2
-open http://localhost:5000
+open http://localhost:8080
 
 python3 app.py

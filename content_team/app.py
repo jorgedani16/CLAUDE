@@ -371,6 +371,6 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("  🎂 La Merced Content Team")
     print("  Open this in your browser:")
-    print("  → http://localhost:5000")
+    print("  → http://localhost:8080")
     print("="*50 + "\n")
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=8080)
