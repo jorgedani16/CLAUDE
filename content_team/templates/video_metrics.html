@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Métricas {{ period }} — {{ video.id }}{% endblock %}
+{% block content %}
+
+<!-- Video summary -->
+<div style="margin-bottom:6px">
+  <a href="/videos" style="color:var(--muted);font-size:13px;text-decoration:none">← Vídeos</a>
+</div>
+<h1>Métricas {{ period }} — <span style="color:var(--accent)">{{ video.id }}</span></h1>
+<p class="subtitle">Entra los números de Instagram Insights para las {{ period }} de publicación.</p>
+
+<div class="card">
+  <div class="form-section-title">📹 Resumen del vídeo</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+    <div>
+      <div style="font-size:11px;color:var(--muted)">Tipo</div>
+      <span class="badge {% if video.type == 'Skit' %}badge-green{% elif video.type == 'Prueba' %}badge-amber{% else %}badge-gray{% endif %}" style="margin-top:4px">{{ video.type }}</span>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted)">CTA</div>
+      <span class="badge {% if video.cta_flag == 'correcto' %}badge-green{% else %}badge-red{% endif %}" style="margin-top:4px">{{ video.cta_flag }}</span>
+    </div>
+    <div>
+      <div style="font-size:11px;color:var(--muted)">Publicado</div>
+      <div style="font-size:13px;margin-top:4px">{{ video.date }} {{ video.upload_time }}</div>
+    </div>
+  </div>
+  <div style="margin-top:12px">
+    <div style="font-size:11px;color:var(--muted)">Hook</div>
+    <div style="font-size:13px;margin-top:4px">{{ video.hook }}</div>
+  </div>
+  <div style="margin-top:10px">
+    <div style="font-size:11px;color:var(--muted)">Resumen IA</div>
+    <div style="font-size:13px;color:var(--muted);font-style:italic;margin-top:4px">{{ video.ai_summary }}</div>
+  </div>
+</div>
+
+{% if period == '24h' and video.get('metrics_24h') %}
+<div class="alert alert-warning">Ya tienes métricas de 24h registradas para este vídeo. Puedes actualizarlas.</div>
+{% endif %}
+{% if period == '48h' and video.get('metrics_48h') %}
+<div class="alert alert-warning">Ya tienes métricas de 48h registradas para este vídeo. Puedes actualizarlas.</div>
+{% endif %}
+
+{% if period == '48h' and video.get('metrics_24h') %}
+<div class="card">
+  <div class="form-section-title">📊 Métricas 24h (referencia)</div>
+  <div style="font-size:13px;display:flex;gap:16px;flex-wrap:wrap">
+    <span>👁 {{ video.metrics_24h.views }} views</span>
+    <span>🔁 {{ video.metrics_24h.shares }} shares</span>
+    <span>🔖 {{ video.metrics_24h.saves }} saves</span>
+    <span>👤 {{ video.metrics_24h.visitas_perfil }} visitas perfil</span>
+    <span>🔗 {{ video.metrics_24h.bio_link_taps }} bio taps</span>
+    <span>➕ {{ video.metrics_24h.follows }} follows</span>
+  </div>
+  <div style="margin-top:8px">
+    <span class="badge {% if video.metrics_24h.decision == 'PUBLICA' %}badge-green{% elif video.metrics_24h.decision == 'ELIMINA' %}badge-red{% else %}badge-amber{% endif %}">
+      Decisión 24h: {{ video.metrics_24h.decision }}
+    </span>
+    {% if video.metrics_24h.get('razon') %}
+    <span style="font-size:12px;color:var(--muted);margin-left:8px">{{ video.metrics_24h.razon }}</span>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<form method="POST" action="/videos/{{ video.id }}/metrics/{{ period }}">
+  <div class="card">
+    <div class="form-section-title">📈 Métricas {{ period }}</div>
+    <p class="text-muted" style="font-size:13px;margin-bottom:20px">
+      Instagram Insights → tu reel → ver estadísticas detalladas.
+      <strong>Visitas de perfil</strong> es la métrica más importante.
+    </p>
+
+    <div class="grid-3">
+      <div class="form-group">
+        <label>👁 Views (reproducciones)</label>
+        <input type="number" name="views" value="{{ existing.get('views', '') if existing else '' }}" placeholder="0" required>
+      </div>
+      <div class="form-group">
+        <label>🔁 Shares (compartidos)</label>
+        <input type="number" name="shares" value="{{ existing.get('shares', '') if existing else '' }}" placeholder="0" required>
+      </div>
+      <div class="form-group">
+        <label>🔖 Saves (guardados)</label>
+        <input type="number" name="saves" value="{{ existing.get('saves', '') if existing else '' }}" placeholder="0" required>
+      </div>
+      <div class="form-group">
+        <label>👤 Visitas de perfil desde reel ← clave</label>
+        <input type="number" name="visitas_perfil" value="{{ existing.get('visitas_perfil', '') if existing else '' }}" placeholder="0" required>
+      </div>
+      <div class="form-group">
+        <label>🔗 Bio link taps</label>
+        <input type="number" name="bio_link_taps" value="{{ existing.get('bio_link_taps', '') if existing else '' }}" placeholder="0" required>
+      </div>
+      <div class="form-group">
+        <label>➕ Follows desde reel</label>
+        <input type="number" name="follows" value="{{ existing.get('follows', '') if existing else '' }}" placeholder="0" required>
+      </div>
+    </div>
+  </div>
+
+  <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+    Guardar y obtener decisión IA
+  </button>
+  <p class="text-muted" style="font-size:13px;margin-top:8px">
+    {% if period == '24h' %}La IA decide: PUBLICA / ELIMINA / ESPERA{% else %}La IA da la decisión final + diagnóstico completo{% endif %}
+  </p>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelector('form').addEventListener('submit', function() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analizando con IA...';
+});
+</script>
+{% endblock %}

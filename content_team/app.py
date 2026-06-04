@@ -393,6 +393,203 @@ def download(filename):
     return send_file(str(p), as_attachment=True)
 
 
+# ── Video tracking ────────────────────────────────────────────────────────────
+
+VIDEOS_FILE = DATA_DIR / "videos.json"
+
+
+def load_videos() -> list:
+    if VIDEOS_FILE.exists():
+        return json.loads(VIDEOS_FILE.read_text(encoding="utf-8"))
+    return []
+
+
+def save_videos(videos: list):
+    VIDEOS_FILE.write_text(json.dumps(videos, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def get_video(video_id: str) -> dict | None:
+    return next((v for v in load_videos() if v["id"] == video_id), None)
+
+
+def update_video(video_id: str, updates: dict):
+    videos = load_videos()
+    for v in videos:
+        if v["id"] == video_id:
+            v.update(updates)
+    save_videos(videos)
+
+
+def videos_by_batch(videos: list) -> list:
+    batches = {}
+    for v in videos:
+        bn = v.get("batch_num", 1)
+        if bn not in batches:
+            batches[bn] = {"num": bn, "date": v.get("batch_date", ""), "videos": []}
+        batches[bn]["videos"].append(v)
+    return sorted(batches.values(), key=lambda b: b["num"], reverse=True)
+
+
+def next_batch_info(videos: list) -> tuple[int, int]:
+    if not videos:
+        return 1, 1
+    last = videos[-1]
+    last_batch = last.get("batch_num", 1)
+    # count videos in last batch
+    same_batch = [v for v in videos if v.get("batch_num") == last_batch]
+    return last_batch, len(same_batch) + 1
+
+
+@app.route("/videos")
+def videos_list():
+    videos = load_videos()
+    return render_template("videos.html", active="videos", batches=videos_by_batch(videos))
+
+
+@app.route("/videos/register", methods=["GET", "POST"])
+def video_register():
+    settings = load_settings()
+    videos = load_videos()
+
+    if request.method == "GET":
+        batch_num, video_num = next_batch_info(videos)
+        return render_template("video_register.html",
+            active="videos",
+            today=date.today().isoformat(),
+            next_batch=batch_num,
+            next_video_in_batch=video_num,
+        )
+
+    f = request.form
+    batch_num = int(f.get("batch_num", 1))
+    video_num = int(f.get("video_num", 1))
+    video_id = f"B{batch_num}V{video_num}"
+
+    # Check for duplicate
+    if any(v["id"] == video_id for v in videos):
+        flash(f"El ID {video_id} ya existe. Cambia el número de batch o vídeo.", "error")
+        return redirect(url_for("video_register"))
+
+    if not settings.get("api_key"):
+        flash("Configura tu API key en Ajustes antes de registrar vídeos.", "error")
+        return redirect(url_for("video_register"))
+
+    # Build base video record
+    video = {
+        "id": video_id,
+        "batch_num": batch_num,
+        "batch_date": f.get("date", str(date.today())),
+        "idea": f.get("idea", ""),
+        "hook": f.get("hook", ""),
+        "type_hint": f.get("type_hint", ""),
+        "cta_placement": f.get("cta_placement", "before_payoff"),
+        "upload_time": f.get("upload_time", "18:00"),
+        "date": f.get("date", str(date.today())),
+        "type": "",
+        "cta_flag": "",
+        "cta_flag_reason": "",
+        "ai_summary": "",
+        "ai_improvement": "",
+    }
+
+    # Run AI analysis
+    try:
+        import config as cfg
+        cfg.ANTHROPIC_API_KEY = settings["api_key"]
+        from agents.video_analyzer import analyze_registration
+        analysis = analyze_registration(
+            video["idea"], video["hook"], video["type_hint"], video["cta_placement"]
+        )
+        video.update({
+            "type": analysis.get("type", video["type_hint"] or "Skit"),
+            "cta_flag": analysis.get("cta_flag", ""),
+            "cta_flag_reason": analysis.get("cta_flag_reason", ""),
+            "ai_summary": analysis.get("ai_summary", ""),
+            "ai_improvement": analysis.get("ai_improvement", ""),
+        })
+    except Exception as e:
+        flash(f"Advertencia: el análisis IA falló ({e}). Vídeo guardado sin análisis.", "warning")
+        video["type"] = video["type_hint"] or "Skit"
+        video["cta_flag"] = "correcto" if video["cta_placement"] == "before_payoff" else "problema"
+
+    videos.append(video)
+    save_videos(videos)
+    flash(f"Vídeo {video_id} registrado correctamente.", "success")
+    return redirect(url_for("videos_list"))
+
+
+@app.route("/videos/<video_id>")
+def video_detail(video_id):
+    video = get_video(video_id)
+    if not video:
+        flash("Vídeo no encontrado.", "error")
+        return redirect(url_for("videos_list"))
+    return render_template("video_detail.html", active="videos", video=video)
+
+
+@app.route("/videos/<video_id>/metrics/<period>", methods=["GET", "POST"])
+def video_metrics(video_id, period):
+    if period not in ("24h", "48h"):
+        return redirect(url_for("videos_list"))
+
+    video = get_video(video_id)
+    if not video:
+        flash("Vídeo no encontrado.", "error")
+        return redirect(url_for("videos_list"))
+
+    settings = load_settings()
+
+    if request.method == "GET":
+        existing = video.get(f"metrics_{period}", {})
+        return render_template("video_metrics.html",
+            active="videos",
+            video=video,
+            period=period,
+            existing=existing,
+        )
+
+    f = request.form
+    metrics = {
+        "views": int(f.get("views") or 0),
+        "shares": int(f.get("shares") or 0),
+        "saves": int(f.get("saves") or 0),
+        "visitas_perfil": int(f.get("visitas_perfil") or 0),
+        "bio_link_taps": int(f.get("bio_link_taps") or 0),
+        "follows": int(f.get("follows") or 0),
+        "recorded_at": datetime.now().isoformat(),
+    }
+
+    # AI decision
+    try:
+        import config as cfg
+        cfg.ANTHROPIC_API_KEY = settings["api_key"]
+        from agents.video_analyzer import analyze_24h, analyze_48h
+
+        video_copy = dict(video)
+        if period == "24h":
+            video_copy["metrics_24h"] = metrics
+            result = analyze_24h(video_copy)
+            metrics["decision"] = result.get("decision", "ESPERA")
+            metrics["razon"] = result.get("razon", "")
+        else:
+            video_copy["metrics_48h"] = metrics
+            result = analyze_48h(video_copy)
+            metrics["decision_final"] = result.get("decision_final", "PUBLICA")
+            metrics["diagnostico"] = result.get("diagnostico", "")
+            metrics["repetir"] = result.get("repetir", False)
+            metrics["repetir_razon"] = result.get("repetir_razon", "")
+    except Exception as e:
+        flash(f"Advertencia: el análisis IA falló ({e}). Métricas guardadas sin decisión.", "warning")
+        if period == "24h":
+            metrics["decision"] = "ESPERA"
+        else:
+            metrics["decision_final"] = "PUBLICA"
+
+    update_video(video_id, {f"metrics_{period}": metrics})
+    flash(f"Métricas {period} guardadas para {video_id}.", "success")
+    return redirect(url_for("videos_list"))
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("  La Merced Content Team")

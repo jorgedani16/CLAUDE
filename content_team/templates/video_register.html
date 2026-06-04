@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Registrar Vídeo{% endblock %}
+{% block content %}
+<h1>Registrar Vídeo</h1>
+<p class="subtitle">Rellena esto nada más subir el vídeo a Instagram. La IA categoriza, resume y te da sugerencias.</p>
+
+<form method="POST" action="/videos/register">
+
+  <div class="card">
+    <div class="form-section-title">📦 Batch</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Número de batch</label>
+        <input type="number" name="batch_num" value="{{ next_batch }}" min="1">
+        <p style="font-size:12px;color:var(--muted);margin-top:4px">Un batch = grupo de vídeos filmados juntos. Incrementa cuando filmas una nueva sesión.</p>
+      </div>
+      <div class="form-group">
+        <label>Número de vídeo en el batch</label>
+        <input type="number" name="video_num" value="{{ next_video_in_batch }}" min="1">
+        <p style="font-size:12px;color:var(--muted);margin-top:4px">El ID será B{{ next_batch }}V{{ next_video_in_batch }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🎬 El Vídeo</div>
+
+    <div class="form-group">
+      <label>Idea (descripción de qué trata el vídeo)</label>
+      <textarea name="idea" rows="2" placeholder="Una chica intenta pedir una tarta por WhatsApp y tarda 20 minutos. Con el configurador lo hace en 3 minutos." required></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>Hook (primer segundo — qué ve o escucha el usuario)</label>
+      <input type="text" name="hook" placeholder="'Esto tardé 20 minutos pidiéndola por WhatsApp...'" required>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tipo de vídeo (opcional — la IA lo confirma)</label>
+        <select name="type_hint">
+          <option value="">La IA lo categoriza</option>
+          <option value="Skit">Skit</option>
+          <option value="Prueba">Prueba</option>
+          <option value="Mecanismo">Mecanismo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Fecha de publicación</label>
+        <input type="date" name="date" value="{{ today }}" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Hora de subida</label>
+      <input type="time" name="upload_time" value="18:00" required>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">📣 CTA</div>
+
+    <div class="form-group">
+      <label>¿Dónde está el CTA en el vídeo?</label>
+      <select name="cta_placement" required>
+        <option value="before_payoff">Antes del payoff ✓ (correcto)</option>
+        <option value="after">Después del payoff (problema)</option>
+        <option value="none">Sin CTA en el vídeo (problema)</option>
+        <option value="description_only">Solo en la descripción (problema)</option>
+      </select>
+      <p style="font-size:12px;color:var(--muted);margin-top:4px">La regla: CTA siempre mid-video ANTES del payoff. Si no, la IA lo marca como problema.</p>
+    </div>
+  </div>
+
+  <div id="submit-section">
+    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+      Registrar y analizar con IA
+    </button>
+    <p class="text-muted" style="font-size:13px;margin-top:8px">La IA tarda ~5 segundos en categorizar, resumir y sugerir mejoras.</p>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelector('form').addEventListener('submit', function() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analizando con IA...';
+});
+</script>
+{% endblock %}

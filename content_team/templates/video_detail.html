@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}{{ video.id }}{% endblock %}
+{% block content %}
+<div style="margin-bottom:6px">
+  <a href="/videos" style="color:var(--muted);font-size:13px;text-decoration:none">← Vídeos</a>
+</div>
+<h1>{{ video.id }} — <span style="color:var(--accent)">{{ video.type }}</span></h1>
+<p class="subtitle">{{ video.date }} · {{ video.upload_time }}</p>
+
+<div class="card">
+  <div class="form-section-title">📹 Registro</div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div><span style="font-size:12px;color:var(--muted)">Idea: </span>{{ video.idea }}</div>
+    <div><span style="font-size:12px;color:var(--muted)">Hook: </span><strong>{{ video.hook }}</strong></div>
+    <div class="flex" style="gap:10px">
+      <span class="badge {% if video.type == 'Skit' %}badge-green{% elif video.type == 'Prueba' %}badge-amber{% else %}badge-gray{% endif %}">{{ video.type }}</span>
+      <span class="badge {% if video.cta_flag == 'correcto' %}badge-green{% else %}badge-red{% endif %}">CTA {{ video.cta_flag }}</span>
+    </div>
+    {% if video.cta_flag_reason %}
+    <div style="font-size:13px;color:var(--muted)">{{ video.cta_flag_reason }}</div>
+    {% endif %}
+    <div><span style="font-size:12px;color:var(--muted)">Resumen IA: </span><em>{{ video.ai_summary }}</em></div>
+    <div style="padding:12px;background:rgba(200,169,126,0.08);border:1px solid var(--accent-dim);border-radius:6px">
+      <span style="font-size:12px;color:var(--accent);font-weight:700">Sugerencia de mejora: </span>
+      <span style="font-size:13px">{{ video.ai_improvement }}</span>
+    </div>
+  </div>
+</div>
+
+{% if video.get('metrics_24h') %}
+<div class="card">
+  <div class="form-section-title">📊 Métricas 24H</div>
+  <div class="grid-3" style="margin-bottom:12px">
+    <div class="stat"><div class="stat-label">Views</div><div class="stat-value">{{ video.metrics_24h.views }}</div></div>
+    <div class="stat"><div class="stat-label">Shares</div><div class="stat-value">{{ video.metrics_24h.shares }}</div></div>
+    <div class="stat"><div class="stat-label">Saves</div><div class="stat-value">{{ video.metrics_24h.saves }}</div></div>
+    <div class="stat"><div class="stat-label">Visitas perfil</div><div class="stat-value">{{ video.metrics_24h.visitas_perfil }}</div></div>
+    <div class="stat"><div class="stat-label">Bio taps</div><div class="stat-value">{{ video.metrics_24h.bio_link_taps }}</div></div>
+    <div class="stat"><div class="stat-label">Follows</div><div class="stat-value">{{ video.metrics_24h.follows }}</div></div>
+  </div>
+  <span class="badge {% if video.metrics_24h.decision == 'PUBLICA' %}badge-green{% elif video.metrics_24h.decision == 'ELIMINA' %}badge-red{% else %}badge-amber{% endif %}" style="font-size:14px;padding:6px 16px">
+    {{ video.metrics_24h.decision }}
+  </span>
+  {% if video.metrics_24h.get('razon') %}
+  <p style="font-size:13px;color:var(--muted);margin-top:10px">{{ video.metrics_24h.razon }}</p>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if video.get('metrics_48h') %}
+<div class="card">
+  <div class="form-section-title">📊 Métricas 48H — Decisión Final</div>
+  <div class="grid-3" style="margin-bottom:12px">
+    <div class="stat"><div class="stat-label">Views</div><div class="stat-value">{{ video.metrics_48h.views }}</div></div>
+    <div class="stat"><div class="stat-label">Shares</div><div class="stat-value">{{ video.metrics_48h.shares }}</div></div>
+    <div class="stat"><div class="stat-label">Saves</div><div class="stat-value">{{ video.metrics_48h.saves }}</div></div>
+    <div class="stat"><div class="stat-label">Visitas perfil</div><div class="stat-value">{{ video.metrics_48h.visitas_perfil }}</div></div>
+    <div class="stat"><div class="stat-label">Bio taps</div><div class="stat-value">{{ video.metrics_48h.bio_link_taps }}</div></div>
+    <div class="stat"><div class="stat-label">Follows</div><div class="stat-value">{{ video.metrics_48h.follows }}</div></div>
+  </div>
+  <span class="badge {% if video.metrics_48h.decision_final == 'PUBLICA' %}badge-green{% else %}badge-red{% endif %}" style="font-size:14px;padding:6px 16px">
+    {{ video.metrics_48h.decision_final }}
+  </span>
+  {% if video.metrics_48h.get('diagnostico') %}
+  <div style="margin-top:16px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+    <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:8px">DIAGNÓSTICO</div>
+    <p style="font-size:13px;line-height:1.7">{{ video.metrics_48h.diagnostico }}</p>
+  </div>
+  {% endif %}
+  {% if video.metrics_48h.get('repetir_razon') %}
+  <div style="margin-top:10px;padding:14px;background:var(--bg);border:1px solid var(--border);border-radius:8px">
+    <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:6px">
+      {% if video.metrics_48h.repetir %}✓ REPETIR{% else %}✗ NO REPETIR{% endif %}
+    </div>
+    <p style="font-size:13px;color:var(--muted)">{{ video.metrics_48h.repetir_razon }}</p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="flex" style="gap:10px;margin-top:8px">
+  {% if not video.get('metrics_24h') %}
+    <a href="/videos/{{ video.id }}/metrics/24h" class="btn btn-primary">Entrar métricas 24h</a>
+  {% elif not video.get('metrics_48h') %}
+    <a href="/videos/{{ video.id }}/metrics/48h" class="btn btn-primary">Entrar métricas 48h</a>
+  {% endif %}
+  <a href="/videos" class="btn btn-outline">← Todos los vídeos</a>
+</div>
+{% endblock %}
