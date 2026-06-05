@@ -408,7 +408,7 @@ def save_videos(videos: list):
     VIDEOS_FILE.write_text(json.dumps(videos, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-def get_video(video_id: str) -> dict | None:
+def get_video(video_id: str):
     return next((v for v in load_videos() if v["id"] == video_id), None)
 
 
