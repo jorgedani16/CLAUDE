@@ -591,6 +591,149 @@ def video_metrics(video_id, period):
 
 
 
+# ── Cowork JSON API ──────────────────────────────────────────────────────────
+# Cowork calls these endpoints directly with JSON — no form interaction needed.
+
+@app.route("/api/status")
+def api_status():
+    """Cowork calls this first to see what needs updating today."""
+    videos = load_videos()
+    today = str(date.today())
+
+    needs_registration = []   # videos posted today not yet in app
+    needs_24h = []
+    needs_48h = []
+
+    from datetime import timedelta
+    yesterday = str((date.today() - timedelta(days=1)).isoformat())
+    two_days_ago = str((date.today() - timedelta(days=2)).isoformat())
+
+    for v in videos:
+        if v.get("date") == yesterday and not v.get("metrics_24h"):
+            needs_24h.append({"id": v["id"], "hook": v["hook"], "date": v["date"]})
+        if v.get("date") == two_days_ago and not v.get("metrics_48h"):
+            needs_48h.append({"id": v["id"], "hook": v["hook"], "date": v["date"]})
+
+    # next batch/video numbers for registration
+    batch_num, video_num = next_batch_info(videos)
+
+    return jsonify({
+        "today": today,
+        "yesterday": yesterday,
+        "two_days_ago": two_days_ago,
+        "next_batch_num": batch_num,
+        "next_video_num": video_num,
+        "needs_24h_metrics": needs_24h,
+        "needs_48h_metrics": needs_48h,
+        "message": "Call /api/videos/register to add today's videos, /api/videos/<id>/metrics/<24h|48h> to log metrics.",
+    })
+
+
+@app.route("/api/videos/register", methods=["POST"])
+def api_video_register():
+    """
+    Cowork POSTs one video at a time.
+    Body (JSON): { batch_num, video_num, idea, hook, type_hint, cta_placement, date, upload_time }
+    cta_placement: "before_payoff" | "after" | "none" | "description_only"
+    """
+    settings = load_settings()
+    if not settings.get("api_key"):
+        return jsonify({"error": "No API key configured"}), 400
+
+    data = request.get_json(force=True) or {}
+    videos = load_videos()
+
+    batch_num = int(data.get("batch_num", 1))
+    video_num = int(data.get("video_num", 1))
+    video_id = f"B{batch_num}V{video_num}"
+
+    if any(v["id"] == video_id for v in videos):
+        return jsonify({"error": f"{video_id} already exists"}), 409
+
+    video = {
+        "id": video_id,
+        "batch_num": batch_num,
+        "batch_date": data.get("date", str(date.today())),
+        "idea": data.get("idea", data.get("hook", "")),
+        "hook": data.get("hook", ""),
+        "type_hint": data.get("type_hint", ""),
+        "cta_placement": data.get("cta_placement", "before_payoff"),
+        "upload_time": data.get("upload_time", "18:00"),
+        "date": data.get("date", str(date.today())),
+        "type": "", "cta_flag": "", "cta_flag_reason": "", "ai_summary": "", "ai_improvement": "",
+    }
+
+    try:
+        import config as cfg
+        cfg.ANTHROPIC_API_KEY = settings["api_key"]
+        from agents.video_analyzer import analyze_registration
+        analysis = analyze_registration(video["idea"], video["hook"], video["type_hint"], video["cta_placement"])
+        video.update({
+            "type": analysis.get("type", video["type_hint"] or "Skit"),
+            "cta_flag": analysis.get("cta_flag", ""),
+            "cta_flag_reason": analysis.get("cta_flag_reason", ""),
+            "ai_summary": analysis.get("ai_summary", ""),
+            "ai_improvement": analysis.get("ai_improvement", ""),
+        })
+    except Exception as e:
+        video["type"] = video["type_hint"] or "Skit"
+        video["cta_flag"] = "correcto" if video["cta_placement"] == "before_payoff" else "problema"
+
+    videos.append(video)
+    save_videos(videos)
+    return jsonify({"ok": True, "id": video_id, "type": video["type"], "cta_flag": video["cta_flag"], "ai_summary": video["ai_summary"]})
+
+
+@app.route("/api/videos/<video_id>/metrics/<period>", methods=["POST"])
+def api_video_metrics(video_id, period):
+    """
+    Cowork POSTs metrics for a specific video.
+    Body (JSON): { views, shares, saves, visitas_perfil, bio_link_taps, follows }
+    """
+    if period not in ("24h", "48h"):
+        return jsonify({"error": "period must be 24h or 48h"}), 400
+
+    settings = load_settings()
+    video = get_video(video_id)
+    if not video:
+        return jsonify({"error": f"Video {video_id} not found"}), 404
+
+    data = request.get_json(force=True) or {}
+    metrics = {
+        "views": int(data.get("views") or 0),
+        "shares": int(data.get("shares") or 0),
+        "saves": int(data.get("saves") or 0),
+        "visitas_perfil": int(data.get("visitas_perfil") or 0),
+        "bio_link_taps": int(data.get("bio_link_taps") or 0),
+        "follows": int(data.get("follows") or 0),
+        "recorded_at": datetime.now().isoformat(),
+    }
+
+    try:
+        import config as cfg
+        cfg.ANTHROPIC_API_KEY = settings["api_key"]
+        from agents.video_analyzer import analyze_24h, analyze_48h
+        video_copy = dict(video)
+        if period == "24h":
+            video_copy["metrics_24h"] = metrics
+            result = analyze_24h(video_copy)
+            metrics["decision"] = result.get("decision", "ESPERA")
+            metrics["razon"] = result.get("razon", "")
+        else:
+            video_copy["metrics_48h"] = metrics
+            result = analyze_48h(video_copy)
+            metrics["decision_final"] = result.get("decision_final", "PUBLICA")
+            metrics["diagnostico"] = result.get("diagnostico", "")
+            metrics["repetir"] = result.get("repetir", False)
+            metrics["repetir_razon"] = result.get("repetir_razon", "")
+    except Exception:
+        metrics["decision"] = "ESPERA" if period == "24h" else None
+        metrics["decision_final"] = "PUBLICA" if period == "48h" else None
+
+    update_video(video_id, {f"metrics_{period}": metrics})
+    return jsonify({"ok": True, "id": video_id, "period": period, "metrics": metrics})
+
+
 # ── Instagram weekly report ───────────────────────────────────────────────────
 
 INSTAGRAM_FILE = DATA_DIR / "instagram_weekly.json"
