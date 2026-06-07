@@ -660,6 +660,9 @@ def api_video_register():
         "cta_placement": data.get("cta_placement", "before_payoff"),
         "upload_time": data.get("upload_time", "18:00"),
         "date": data.get("date", str(date.today())),
+        "cowork_description": data.get("cowork_description", ""),
+        "cowork_why_worked": data.get("cowork_why_worked", ""),
+        "cowork_why_didnt": data.get("cowork_why_didnt", ""),
         "type": "", "cta_flag": "", "cta_flag_reason": "", "ai_summary": "", "ai_improvement": "",
     }
 
@@ -706,6 +709,7 @@ def api_video_metrics(video_id, period):
         "visitas_perfil": int(data.get("visitas_perfil") or 0),
         "bio_link_taps": int(data.get("bio_link_taps") or 0),
         "follows": int(data.get("follows") or 0),
+        "cowork_performance_notes": data.get("cowork_performance_notes", ""),
         "recorded_at": datetime.now().isoformat(),
     }
 
