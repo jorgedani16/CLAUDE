@@ -61,9 +61,46 @@
   </div>
 
   <div class="card">
-    <div class="form-section-title">🔌 Integraciones automáticas</div>
+    <div class="form-section-title">📱 Instagram — Sync automático</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px">
+      Con esto configurado, la app registra tus reels y mete las métricas de 24h y 48h sola, cada día a las 21:00. No tienes que hacer nada.
+    </p>
+
+    <div style="background:rgba(200,169,126,0.08);border:1px solid var(--accent-dim);border-radius:8px;padding:14px;margin-bottom:18px;font-size:13px;line-height:1.8">
+      <strong style="color:var(--accent)">Cómo obtener estos datos (10 minutos):</strong><br>
+      1. Ve a <strong>developers.facebook.com</strong> → My Apps → Create App → Business<br>
+      2. Añade el producto <strong>Instagram Graph API</strong><br>
+      3. En "Instagram → Basic Display" conecta tu cuenta de Instagram Business<br>
+      4. Ve a <strong>Graph API Explorer</strong> → selecciona tu app → genera un token con permisos: <code>instagram_basic, instagram_manage_insights, pages_show_list</code><br>
+      5. Convierte a long-lived token (válido 60 días, la app lo renueva sola):<br>
+      <code style="font-size:11px">GET https://graph.facebook.com/oauth/access_token?grant_type=fb_exchange_token&client_id=APP_ID&client_secret=APP_SECRET&fb_exchange_token=TOKEN</code><br>
+      6. Tu Account ID lo encuentras en: Instagram → Settings → Professional Dashboard → About → ID de cuenta
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Instagram Account ID</label>
+        <input type="text" name="instagram_account_id" value="{{ settings.instagram_account_id }}" placeholder="17841400000000000">
+      </div>
+      <div class="form-group">
+        <label>Access Token (long-lived)</label>
+        <input type="password" name="instagram_access_token" value="{{ settings.instagram_access_token }}" placeholder="EAABsbCS...">
+      </div>
+    </div>
+
+    {% if settings.instagram_account_id and settings.instagram_access_token %}
+    <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+      <span class="badge badge-green">✓ Configurado</span>
+      <button type="button" class="btn btn-outline btn-sm" onclick="testSync()">Probar sync ahora</button>
+      <span id="sync-result" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🔌 Otras integraciones (opcionales)</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
-      Las integraciones son opcionales. Sin ellas, introduces los datos manualmente.
+      Sin ellas, introduces los datos del configurador y tráfico web manualmente.
     </p>
 
     <div class="form-group">
@@ -98,4 +135,29 @@
 
   <button type="submit" class="btn btn-primary btn-lg">Guardar configuración</button>
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function testSync() {
+  const btn = event.target;
+  btn.disabled = true;
+  btn.textContent = 'Sincronizando...';
+  document.getElementById('sync-result').textContent = '';
+  fetch('/api/sync', { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+      btn.textContent = 'Probar sync ahora';
+      if (data.ok) {
+        const r = data.results;
+        document.getElementById('sync-result').textContent =
+          `✓ Registrados: ${r.registered?.length || 0} · 24h: ${r.metrics_24h?.length || 0} · 48h: ${r.metrics_48h?.length || 0}`;
+      } else {
+        document.getElementById('sync-result').textContent = '✗ Error: ' + data.error;
+      }
+    })
+    .catch(() => { btn.disabled = false; btn.textContent = 'Probar sync ahora'; });
+}
+</script>
 {% endblock %}

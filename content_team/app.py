@@ -38,6 +38,8 @@ DEFAULT_SETTINGS = {
     "target_audience": "Hombres y mujeres de 20 a 40 años en Valencia que tienen un evento próximo y buscan una tarta única y personalizada.",
     "brand_voice": "Directo, cercano, artesanal. Habla como un dueño de pastelería local que ama lo que hace. Sin corporativismo.",
     "main_cta": "Diseña la tuya ahora — visita el enlace en la descripción ■",
+    "instagram_account_id": "",
+    "instagram_access_token": "",
     "ga4_property_id": "",
     "google_credentials_path": "",
     "search_console_site_url": "https://pastelerialamerced.es",
@@ -867,10 +869,59 @@ def instagram_page():
     )
 
 
+@app.route("/api/sync", methods=["POST"])
+def api_sync():
+    """Manual sync trigger — runs the same job as the daily scheduler."""
+    from scheduler import run_daily_sync
+    ctx = _scheduler_context()
+    try:
+        results = run_daily_sync(ctx)
+        return jsonify({"ok": True, "results": results})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
+@app.route("/api/sync-log")
+def api_sync_log():
+    log_path = DATA_DIR / "sync_log.json"
+    if log_path.exists():
+        return jsonify(json.loads(log_path.read_text()))
+    return jsonify([])
+
+
+def _scheduler_context():
+    return {
+        "settings": load_settings,
+        "save_settings": save_settings,
+        "load_videos": load_videos,
+        "save_videos": save_videos,
+        "get_video": get_video,
+        "update_video": update_video,
+        "next_batch_info": next_batch_info,
+        "DATA_DIR": str(DATA_DIR),
+    }
+
+
+def start_scheduler():
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from scheduler import run_daily_sync
+        ctx = _scheduler_context()
+        sched = BackgroundScheduler()
+        sched.add_job(lambda: run_daily_sync(ctx), "cron", hour=21, minute=0)
+        sched.start()
+        print("  ✓ Sync automático activo — corre cada día a las 21:00")
+    except ImportError:
+        print("  ⚠ APScheduler no instalado — sync manual disponible en /api/sync")
+    except Exception as e:
+        print(f"  ⚠ Scheduler error: {e}")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("  La Merced Content Team")
     print("  Abre esto en tu navegador:")
     print("  → http://localhost:8080")
     print("=" * 50 + "\n")
+    start_scheduler()
     app.run(debug=False, port=8080)
