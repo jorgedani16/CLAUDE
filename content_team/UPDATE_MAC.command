@@ -1,7 +1,7 @@
 #!/bin/bash
 # UPDATE_MAC.command — descarga el código nuevo sin borrar tus vídeos y ajustes
 
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")"   # Va a content_team/ donde está app.py
 APP_DIR="$(pwd)"
 
 echo ""
@@ -26,13 +26,12 @@ unzip -q /tmp/lamerced_update.zip -d /tmp/lamerced_extract
 
 # 4. Copy code files only (not data/)
 EXTRACTED="/tmp/lamerced_extract/CLAUDE-claude-nice-wright-9oUnU/content_team"
-cp -r "$EXTRACTED/agents"      "$APP_DIR/"
-cp -r "$EXTRACTED/integrations" "$APP_DIR/"
-cp -r "$EXTRACTED/templates"   "$APP_DIR/"
-cp -r "$EXTRACTED/static"      "$APP_DIR/"
-cp    "$EXTRACTED/app.py"      "$APP_DIR/"
-cp    "$EXTRACTED/config.py"   "$APP_DIR/"
-cp    "$EXTRACTED/pipeline.py" "$APP_DIR/"
+cp -r "$EXTRACTED/agents"           "$APP_DIR/"
+cp -r "$EXTRACTED/integrations"     "$APP_DIR/"
+cp -r "$EXTRACTED/templates"        "$APP_DIR/"
+cp -r "$EXTRACTED/static"           "$APP_DIR/"
+cp    "$EXTRACTED/app.py"           "$APP_DIR/"
+cp    "$EXTRACTED/config.py"        "$APP_DIR/"
 cp    "$EXTRACTED/requirements.txt" "$APP_DIR/"
 echo "✓ Código actualizado"
 

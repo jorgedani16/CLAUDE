@@ -2,10 +2,73 @@
 {% block title %}Vídeos{% endblock %}
 {% block content %}
 <div class="flex-between" style="margin-bottom:6px">
-  <h1>Vídeos</h1>
+  <h1>🎬 Vídeos</h1>
   <a href="/videos/register" class="btn btn-primary">+ Registrar vídeo</a>
 </div>
 <p class="subtitle">Seguimiento individual de cada vídeo — 24h y 48h.</p>
+
+<!-- Cowork prompts -->
+<div class="card" style="margin-bottom:20px">
+  <div class="form-section-title">📋 Prompts para cowork</div>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Copia el prompt que corresponde, pégalo en cowork y usa los datos que te devuelve para rellenar la app.</p>
+  <div style="display:flex;flex-direction:column;gap:10px">
+
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">1 · Al subir reels (registrar vídeos del día)</div>
+      <div style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;line-height:1.7;white-space:pre-wrap" id="prompt1">Conecta con mi cuenta de Instagram (@pastelerialamerced).
+
+Busca todos los reels que he publicado HOY.
+Para cada uno dame:
+
+VÍDEO [número en orden de subida]:
+- Hook: [exactamente lo que se ve o escucha en el primer segundo]
+- Tipo: [Skit=situación cómica viral / Prueba=alguien usando el configurador o tarta real / Mecanismo=demo del configurador]
+- CTA antes del payoff: [Sí / No]
+- Hora de publicación: [HH:MM]
+
+Dame un bloque por cada vídeo.</div>
+      <button type="button" class="btn btn-outline" style="margin-top:8px;font-size:11px" onclick="copyText('prompt1')">Copiar</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:10px">→ Luego: Registrar vídeo (un formulario por vídeo)</span>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">2 · A las 24h (métricas 24h)</div>
+      <div style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;line-height:1.7;white-space:pre-wrap" id="prompt2">Conecta con mi cuenta de Instagram (@pastelerialamerced).
+
+Busca los reels que publiqué el [FECHA DE AYER].
+Para cada uno dame:
+
+MÉTRICAS 24H — [hook del vídeo]:
+- Reproducciones (views):
+- Shares:
+- Guardados (saves):
+- Visitas al perfil desde este reel:
+- Clics al enlace de bio:
+- Nuevos seguidores atribuidos:</div>
+      <button type="button" class="btn btn-outline" style="margin-top:8px;font-size:11px" onclick="copyText('prompt2')">Copiar</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:10px">→ Luego: botón "Entrar métricas 24h" en cada vídeo</span>
+    </div>
+
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">3 · A las 48h — decisión final</div>
+      <div style="background:var(--bg);border-radius:6px;padding:10px;font-size:11px;font-family:monospace;line-height:1.7;white-space:pre-wrap" id="prompt3">Conecta con mi cuenta de Instagram (@pastelerialamerced).
+
+Busca los reels que publiqué el [FECHA DE HACE 2 DÍAS].
+Para cada uno dame:
+
+MÉTRICAS 48H — [hook del vídeo]:
+- Reproducciones (views):
+- Shares:
+- Guardados (saves):
+- Visitas al perfil desde este reel:
+- Clics al enlace de bio:
+- Nuevos seguidores atribuidos:</div>
+      <button type="button" class="btn btn-outline" style="margin-top:8px;font-size:11px" onclick="copyText('prompt3')">Copiar</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:10px">→ Luego: botón "Entrar métricas 48h" en cada vídeo</span>
+    </div>
+
+  </div>
+</div>
 
 {% if not batches %}
 <div class="card" style="text-align:center;padding:40px;border-style:dashed">
@@ -128,4 +191,15 @@
 </div>
 {% endfor %}
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyText(id) {
+  const text = document.getElementById(id).innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Prompt copiado');
+  });
+}
+</script>
 {% endblock %}
