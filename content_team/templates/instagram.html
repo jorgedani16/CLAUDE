@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Instagram Semanal{% endblock %}
+{% block content %}
+<h1>📱 Instagram — Informe Semanal</h1>
+<p class="subtitle">Pega aquí los datos de cowork (o rellena manualmente). La IA analiza, te dice qué funcionó y qué hacer la semana que viene.</p>
+
+{% if report %}
+<!-- ── REPORT ─────────────────────────────────────────────────────────────── -->
+<div class="card" style="border:2px solid var(--accent)">
+  <div class="form-section-title" style="font-size:15px">
+    🧭 Estado del canal:
+    <span class="badge {% if report.norte == 'BIEN' %}badge-green{% elif report.norte == 'REGULAR' %}badge-amber{% else %}badge-red{% endif %}" style="font-size:13px;padding:4px 14px;margin-left:8px">
+      {{ report.norte }}
+    </span>
+  </div>
+  <p style="margin-top:8px;font-size:14px;line-height:1.7">{{ report.resumen_semana }}</p>
+  <p style="font-size:13px;color:var(--muted)">{{ report.norte_razon }}</p>
+</div>
+
+<div class="grid-3" style="margin-bottom:0">
+  {% set ind = report.indicadores %}
+  <div class="stat">
+    <div class="stat-label">Visitas perfil/reel</div>
+    <div class="stat-value">{{ ind.visitas_perfil_por_reel.valor }}</div>
+    <div style="font-size:11px;color:{% if ind.visitas_perfil_por_reel.ok %}var(--green){% else %}var(--red){% endif %}">
+      {{ ind.visitas_perfil_por_reel.tendencia }}
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Followers ganados</div>
+    <div class="stat-value">{{ ind.followers_ganados.valor }}</div>
+    <div style="font-size:11px;color:{% if ind.followers_ganados.ok %}var(--green){% else %}var(--red){% endif %}">
+      {{ ind.followers_ganados.tendencia }}
+    </div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Mejor formato</div>
+    <div class="stat-value" style="font-size:18px">{{ ind.mejor_formato.valor }}</div>
+    <div style="font-size:11px;color:var(--muted)">Engagement {{ ind.engagement_rate.valor }}</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+  <div class="card" style="margin-bottom:0">
+    <div class="form-section-title" style="color:var(--green)">✅ Qué funcionó</div>
+    {% for item in report.que_funciono %}
+    <div style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600">{{ item.titulo }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">{{ item.detalle }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="card" style="margin-bottom:0">
+    <div class="form-section-title" style="color:var(--red)">⚠️ Qué no funcionó</div>
+    {% for item in report.que_no_funciono %}
+    <div style="margin-bottom:10px">
+      <div style="font-size:13px;font-weight:600">{{ item.titulo }}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">{{ item.detalle }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card">
+  <div class="form-section-title">🎯 Directrices para la semana que viene</div>
+  {% for d in report.directrices_semana_siguiente %}
+  <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px">
+    <div style="min-width:28px;height:28px;border-radius:50%;background:var(--accent);color:#1a1008;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px">{{ d.numero }}</div>
+    <div style="font-size:14px;padding-top:4px">{{ d.accion }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if report.alerta %}
+<div class="card" style="border:1px solid var(--red);background:rgba(220,38,38,0.06)">
+  <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:4px">🚨 ALERTA</div>
+  <p style="font-size:13px">{{ report.alerta }}</p>
+</div>
+{% endif %}
+
+<div style="margin-top:16px">
+  <a href="/instagram" class="btn btn-outline">← Actualizar datos</a>
+</div>
+
+{% else %}
+<!-- ── FORM ───────────────────────────────────────────────────────────────── -->
+<form method="POST" action="/instagram">
+
+  <div class="card">
+    <div class="form-section-title">📋 Prompt para cowork</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px">Copia este prompt, pégalo en cowork y trae los resultados aquí abajo.</p>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-size:12px;line-height:1.8;white-space:pre-wrap;font-family:monospace" id="cowork-prompt">{{ cowork_prompt }}</div>
+    <button type="button" class="btn btn-outline" style="margin-top:10px;font-size:12px" onclick="copyPrompt()">Copiar prompt</button>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">📈 Cuenta — Esta semana</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Seguidores totales ahora</label>
+        <input type="number" name="followers_total" placeholder="ej. 4820" value="{{ saved.get('followers_total', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Seguidores ganados esta semana</label>
+        <input type="number" name="followers_gained" placeholder="ej. +34" value="{{ saved.get('followers_gained', '') }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Alcance total (reach)</label>
+        <input type="number" name="reach" placeholder="ej. 12400" value="{{ saved.get('reach', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Impresiones totales</label>
+        <input type="number" name="impressions" placeholder="ej. 18900" value="{{ saved.get('impressions', '') }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Visitas al perfil (total semana)</label>
+        <input type="number" name="profile_visits" placeholder="ej. 890" value="{{ saved.get('profile_visits', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Clics al enlace de bio (link in bio)</label>
+        <input type="number" name="bio_link_clicks" placeholder="ej. 112" value="{{ saved.get('bio_link_clicks', '') }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🥇 Top 3 Reels de la semana</div>
+    {% for i in range(3) %}
+    <div style="border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:14px">
+      <div style="font-size:12px;color:var(--accent);font-weight:700;margin-bottom:10px">#{{ i+1 }}</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select name="top_type_{{ i }}">
+            <option value="">— elige —</option>
+            <option value="Skit" {% if saved.get('top_posts', [{}]*3)[i].get('type') == 'Skit' %}selected{% endif %}>Skit</option>
+            <option value="Prueba" {% if saved.get('top_posts', [{}]*3)[i].get('type') == 'Prueba' %}selected{% endif %}>Prueba</option>
+            <option value="Mecanismo" {% if saved.get('top_posts', [{}]*3)[i].get('type') == 'Mecanismo' %}selected{% endif %}>Mecanismo</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Hook (primer segundo)</label>
+          <input type="text" name="top_hook_{{ i }}" placeholder="Lo que dice o se ve al inicio" value="{{ saved.get('top_posts', [{}]*3)[i].get('hook', '') }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Views / Reproducciones</label>
+          <input type="number" name="top_views_{{ i }}" placeholder="ej. 14200" value="{{ saved.get('top_posts', [{}]*3)[i].get('views', '') }}">
+        </div>
+        <div class="form-group">
+          <label>Visitas al perfil desde este reel</label>
+          <input type="number" name="top_profile_visits_{{ i }}" placeholder="ej. 340" value="{{ saved.get('top_posts', [{}]*3)[i].get('profile_visits', '') }}">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Likes</label>
+          <input type="number" name="top_likes_{{ i }}" value="{{ saved.get('top_posts', [{}]*3)[i].get('likes', '') }}">
+        </div>
+        <div class="form-group">
+          <label>Comentarios</label>
+          <input type="number" name="top_comments_{{ i }}" value="{{ saved.get('top_posts', [{}]*3)[i].get('comments', '') }}">
+        </div>
+        <div class="form-group">
+          <label>Shares</label>
+          <input type="number" name="top_shares_{{ i }}" value="{{ saved.get('top_posts', [{}]*3)[i].get('shares', '') }}">
+        </div>
+        <div class="form-group">
+          <label>Guardados</label>
+          <input type="number" name="top_saves_{{ i }}" value="{{ saved.get('top_posts', [{}]*3)[i].get('saves', '') }}">
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">📉 Peor reel de la semana</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tipo</label>
+        <select name="worst_type">
+          <option value="">— elige —</option>
+          <option value="Skit" {% if saved.get('worst_post', {}).get('type') == 'Skit' %}selected{% endif %}>Skit</option>
+          <option value="Prueba" {% if saved.get('worst_post', {}).get('type') == 'Prueba' %}selected{% endif %}>Prueba</option>
+          <option value="Mecanismo" {% if saved.get('worst_post', {}).get('type') == 'Mecanismo' %}selected{% endif %}>Mecanismo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Hook</label>
+        <input type="text" name="worst_hook" placeholder="Hook del vídeo que peor fue" value="{{ saved.get('worst_post', {}).get('hook', '') }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Views</label>
+        <input type="number" name="worst_views" value="{{ saved.get('worst_post', {}).get('views', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Visitas al perfil</label>
+        <input type="number" name="worst_profile_visits" value="{{ saved.get('worst_post', {}).get('profile_visits', '') }}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>¿Por qué crees que falló?</label>
+      <input type="text" name="worst_reason" placeholder="Hook débil, formato raro, mala hora..." value="{{ saved.get('worst_post', {}).get('reason', '') }}">
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">🛒 Negocio</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Ventas configurador esta semana</label>
+        <input type="number" name="ventas_configurador" placeholder="ej. 3" value="{{ saved.get('ventas_configurador', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Leads por WhatsApp esta semana</label>
+        <input type="number" name="leads_whatsapp" placeholder="ej. 7" value="{{ saved.get('leads_whatsapp', '') }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">👀 Competencia — Lo más viral visto esta semana</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Handle (@cuenta)</label>
+        <input type="text" name="comp_handle" placeholder="@pasteleria_viral" value="{{ saved.get('competitor', {}).get('handle', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Hook del vídeo viral</label>
+        <input type="text" name="comp_hook" placeholder="Frase o situación del primer segundo" value="{{ saved.get('competitor', {}).get('hook', '') }}">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Views aprox.</label>
+        <input type="text" name="comp_views" placeholder="ej. 200k" value="{{ saved.get('competitor', {}).get('views', '') }}">
+      </div>
+      <div class="form-group">
+        <label>Formato (Skit / Tutorial / Reacción...)</label>
+        <input type="text" name="comp_format" placeholder="Skit" value="{{ saved.get('competitor', {}).get('format', '') }}">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="form-section-title">📝 Notas libres</div>
+    <div class="form-group">
+      <textarea name="notes" rows="3" placeholder="Algo que noté, cambio de algoritmo, pregunta frecuente en comentarios...">{{ saved.get('notes', '') }}</textarea>
+    </div>
+  </div>
+
+  <div id="submit-section">
+    <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">
+      Analizar con IA
+    </button>
+    <p class="text-muted" style="font-size:13px;margin-top:8px">La IA compara tus datos con el plan de marketing y te da el veredicto en ~5 segundos.</p>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function copyPrompt() {
+  const text = document.getElementById('cowork-prompt').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    alert('Prompt copiado al portapapeles');
+  });
+}
+document.querySelector('form')?.addEventListener('submit', function() {
+  const btn = document.getElementById('submit-btn');
+  if (btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Analizando...';
+  }
+});
+</script>
+{% endblock %}

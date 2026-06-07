@@ -590,6 +590,136 @@ def video_metrics(video_id, period):
     return redirect(url_for("videos_list"))
 
 
+
+# ── Instagram weekly report ───────────────────────────────────────────────────
+
+INSTAGRAM_FILE = DATA_DIR / "instagram_weekly.json"
+
+COWORK_PROMPT = """Conecta con mi cuenta de Instagram Business y extrae los datos de los ÚLTIMOS 7 DÍAS.
+Necesito que me des la siguiente información estructurada — responde exactamente con estos campos:
+
+1. CUENTA
+   - Seguidores totales actuales
+   - Seguidores ganados esta semana (diferencia 7 días)
+   - Alcance total (reach) de la semana
+   - Impresiones totales de la semana
+   - Visitas al perfil totales de la semana
+   - Clics al enlace de bio (link in bio) totales de la semana
+
+2. TOP 3 REELS (los 3 con más visitas al perfil)
+   Para cada uno:
+   - Fecha de publicación
+   - Hook / primer texto o situación visible en el vídeo
+   - Reproducciones (views)
+   - Visitas al perfil generadas por este reel
+   - Likes, comentarios, shares, guardados
+   - Porcentaje de retención media (si está disponible)
+
+3. PEOR REEL DE LA SEMANA (el que menos visitas al perfil generó)
+   - Hook
+   - Reproducciones
+   - Visitas al perfil
+   - Likes
+
+4. ENGAGEMENT RATE medio de la semana (si está disponible)
+
+5. FORMATO QUE MEJOR FUNCIONÓ esta semana (Reel largo >30s / Reel corto <15s / Carrusel / Foto)
+
+Devuelve todo en texto claro y ordenado para que yo lo pueda copiar en mi app."""
+
+
+def load_instagram_weekly():
+    if INSTAGRAM_FILE.exists():
+        return json.loads(INSTAGRAM_FILE.read_text())
+    return {}
+
+
+def save_instagram_weekly(data):
+    INSTAGRAM_FILE.write_text(json.dumps(data, indent=2, ensure_ascii=False))
+
+
+@app.route("/instagram", methods=["GET", "POST"])
+def instagram_page():
+    saved = load_instagram_weekly()
+    report = saved.get("report")
+
+    # Clear report if user wants to update
+    if request.args.get("reset"):
+        saved.pop("report", None)
+        save_instagram_weekly(saved)
+        return redirect(url_for("instagram_page"))
+
+    if request.method == "POST":
+        settings = load_settings()
+        if not settings.get("api_key"):
+            flash("Configura tu API key de Claude en Ajustes primero.", "error")
+            return redirect(url_for("instagram_page"))
+
+        f = request.form
+
+        top_posts = []
+        for i in range(3):
+            top_posts.append({
+                "type": f.get(f"top_type_{i}", ""),
+                "hook": f.get(f"top_hook_{i}", ""),
+                "views": int(f.get(f"top_views_{i}") or 0),
+                "profile_visits": int(f.get(f"top_profile_visits_{i}") or 0),
+                "likes": int(f.get(f"top_likes_{i}") or 0),
+                "comments": int(f.get(f"top_comments_{i}") or 0),
+                "shares": int(f.get(f"top_shares_{i}") or 0),
+                "saves": int(f.get(f"top_saves_{i}") or 0),
+            })
+
+        data = {
+            "week": str(date.today()),
+            "followers_total": int(f.get("followers_total") or 0),
+            "followers_gained": int(f.get("followers_gained") or 0),
+            "reach": int(f.get("reach") or 0),
+            "impressions": int(f.get("impressions") or 0),
+            "profile_visits": int(f.get("profile_visits") or 0),
+            "bio_link_clicks": int(f.get("bio_link_clicks") or 0),
+            "top_posts": top_posts,
+            "worst_post": {
+                "type": f.get("worst_type", ""),
+                "hook": f.get("worst_hook", ""),
+                "views": int(f.get("worst_views") or 0),
+                "profile_visits": int(f.get("worst_profile_visits") or 0),
+                "reason": f.get("worst_reason", ""),
+            },
+            "ventas_configurador": int(f.get("ventas_configurador") or 0),
+            "leads_whatsapp": int(f.get("leads_whatsapp") or 0),
+            "competitor": {
+                "handle": f.get("comp_handle", ""),
+                "hook": f.get("comp_hook", ""),
+                "views": f.get("comp_views", ""),
+                "format": f.get("comp_format", ""),
+            },
+            "notes": f.get("notes", ""),
+        }
+
+        try:
+            import config as cfg
+            cfg.ANTHROPIC_API_KEY = settings["api_key"]
+            from agents.instagram_analyzer import analyze_week
+            report = analyze_week(data)
+            data["report"] = report
+            save_instagram_weekly(data)
+            flash("Análisis completado.", "success")
+        except Exception as e:
+            flash(f"Error al analizar: {e}", "error")
+            save_instagram_weekly(data)
+            return redirect(url_for("instagram_page"))
+
+        return redirect(url_for("instagram_page"))
+
+    return render_template("instagram.html",
+        active="instagram",
+        cowork_prompt=COWORK_PROMPT,
+        saved=saved,
+        report=report,
+    )
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("  La Merced Content Team")
